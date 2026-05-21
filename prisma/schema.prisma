@@ -1,0 +1,46 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  name       String
+  password   String
+  role       String   @default("USER")
+  hourlyRate Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  attendances Attendance[]
+  absences    Absence[]
+}
+
+model Attendance {
+  id       String  @id @default(cuid())
+  userId   String
+  date     String  // YYYY-MM-DD
+  clockIn  String? // HH:mm:ss
+  clockOut String? // HH:mm:ss
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
+
+model Absence {
+  id     String @id @default(cuid())
+  userId String
+  date   String // YYYY-MM-DD
+  reason String
+  type   String // ILLNESS, EVENT, PLANNED, OTHER
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}

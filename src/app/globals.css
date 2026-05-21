@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 min-h-screen;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-xl;
+  }
+  .glass-strong {
+    @apply bg-white/90 backdrop-blur-xl border border-white/30 shadow-xl;
+  }
+  .gradient-text {
+    @apply bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent;
+  }
+  .gradient-btn {
+    @apply bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700;
+  }
+  .gradient-card-blue {
+    @apply bg-gradient-to-br from-blue-500 to-indigo-600;
+  }
+  .gradient-card-green {
+    @apply bg-gradient-to-br from-emerald-500 to-teal-600;
+  }
+  .gradient-card-red {
+    @apply bg-gradient-to-br from-rose-500 to-pink-600;
+  }
+  .gradient-card-purple {
+    @apply bg-gradient-to-br from-violet-500 to-purple-600;
+  }
+  .gradient-card-amber {
+    @apply bg-gradient-to-br from-amber-500 to-orange-600;
+  }
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full hover:bg-gray-400;
+}
