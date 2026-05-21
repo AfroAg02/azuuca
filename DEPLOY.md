@@ -62,12 +62,12 @@ git push -u origin main
 1. Ir a https://render.com
 2. Crear cuenta gratuita con GitHub
 
-### Paso 3: Crear Base de Datos PostgreSQL
+### Paso 3: Crear Base de Datos en Neon
 
-1. En el Dashboard de Render, click **"New"** → **"PostgreSQL"**
-2. Nombre: `azuuca-db`
-3. Plan: **Free**
-4. Esperar a que se cree y copiar la **"Internal Database URL"**
+1. Ir a https://neon.tech
+2. Crear cuenta gratuita
+3. Crear un proyecto nuevo
+4. Copiar el **connection string**
 
 ### Paso 4: Modificar Prisma para PostgreSQL
 
@@ -92,7 +92,7 @@ Hacer commit y push de este cambio.
    - **Build Command:** `npm install && npx prisma generate && npx prisma db push && npm run build`
    - **Start Command:** `npm start`
 4. Agregar Variables de Entorno:
-   - `DATABASE_URL` → (la URL del PostgreSQL del paso 3)
+   - `DATABASE_URL` → (connection string de Neon del paso 3)
    - `NEXTAUTH_SECRET` → (generar con: `openssl rand -base64 32`)
    - `NEXTAUTH_URL` → `https://azuuca.onrender.com`
 
