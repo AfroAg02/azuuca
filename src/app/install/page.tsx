@@ -266,7 +266,7 @@ export default function InstallPage() {
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
                 {item.title}
-                {item.icon && item.icon}
+                {"icon" in item && item.icon}
               </h3>
               <p className="text-sm text-gray-500 mt-1">{item.description}</p>
             </div>
