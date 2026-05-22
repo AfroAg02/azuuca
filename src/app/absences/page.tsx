@@ -18,32 +18,38 @@ import { sileo } from "sileo";
 
 interface Absence {
   id: string;
-  date: string;
+  startDate: string;
+  endDate: string;
   reason: string;
   type: string;
-  user?: { name: string };
+  user?: { name: string } | null;
 }
 
 const ABSENCE_TYPES = [
   {
-    value: "ILLNESS",
-    label: "Enfermedad",
+    value: "MEDICAL",
+    label: "Médica",
     icon: Stethoscope,
     color: "text-rose-500",
   },
   {
-    value: "EVENT",
-    label: "Evento",
+    value: "VACATION",
+    label: "Vacaciones",
+    icon: CalendarCheck,
+    color: "text-blue-500",
+  },
+  {
+    value: "PAID_LEAVE",
+    label: "Permiso pagado",
     icon: PartyPopper,
     color: "text-amber-500",
   },
   {
-    value: "PLANNED",
-    label: "Día planificado",
-    icon: CalendarCheck,
-    color: "text-blue-500",
+    value: "UNJUSTIFIED",
+    label: "Injustificada",
+    icon: HelpCircle,
+    color: "text-gray-500",
   },
-  { value: "OTHER", label: "Otro", icon: HelpCircle, color: "text-gray-500" },
 ];
 
 const container = {
@@ -59,7 +65,7 @@ const item = {
 export default function AbsencesPage() {
   const [absences, setAbsences] = useState<Absence[]>([]);
   const [date, setDate] = useState("");
-  const [type, setType] = useState("ILLNESS");
+  const [type, setType] = useState("MEDICAL");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -89,6 +95,17 @@ export default function AbsencesPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setMessage("");
+
+    // Validate date is today or future
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    if (date < todayStr) {
+      sileo.error({
+        title: "Fecha inválida",
+        description: "Solo puedes registrar ausencias a partir de hoy",
+      });
+      return;
+    }
 
     try {
       const res = await fetch("/api/absences", {
@@ -286,12 +303,12 @@ export default function AbsencesPage() {
                 >
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      absence.type === "ILLNESS"
+                      absence.type === "MEDICAL"
                         ? "bg-rose-100"
-                        : absence.type === "EVENT"
-                          ? "bg-amber-100"
-                          : absence.type === "PLANNED"
-                            ? "bg-blue-100"
+                        : absence.type === "VACATION"
+                          ? "bg-blue-100"
+                          : absence.type === "PAID_LEAVE"
+                            ? "bg-amber-100"
                             : "bg-gray-100"
                     }`}
                   >
@@ -303,16 +320,16 @@ export default function AbsencesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="font-medium text-sm text-gray-900">
-                        {absence.date}
+                        {absence.startDate}
                       </span>
                       <span
                         className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          absence.type === "ILLNESS"
+                          absence.type === "MEDICAL"
                             ? "bg-rose-100 text-rose-700"
-                            : absence.type === "EVENT"
-                              ? "bg-amber-100 text-amber-700"
-                              : absence.type === "PLANNED"
-                                ? "bg-blue-100 text-blue-700"
+                            : absence.type === "VACATION"
+                              ? "bg-blue-100 text-blue-700"
+                              : absence.type === "PAID_LEAVE"
+                                ? "bg-amber-100 text-amber-700"
                                 : "bg-gray-100 text-gray-700"
                         }`}
                       >

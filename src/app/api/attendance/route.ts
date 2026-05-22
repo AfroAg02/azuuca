@@ -72,7 +72,7 @@ export async function PATCH(request: Request) {
   }
 
   // Validar formato de hora HH:mm:ss
-  const timeRegex = /^\d{2}:\d{2}:\d{2}$/;
+  const timeRegex = /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
   if (clockIn !== undefined && clockIn !== null && !timeRegex.test(clockIn)) {
     return NextResponse.json(
       { error: "Formato de clockIn inválido (HH:mm:ss)" },
@@ -86,6 +86,16 @@ export async function PATCH(request: Request) {
   ) {
     return NextResponse.json(
       { error: "Formato de clockOut inválido (HH:mm:ss)" },
+      { status: 400 },
+    );
+  }
+
+  // Validar que la hora de salida sea posterior a la de entrada
+  const finalClockIn = clockIn !== undefined ? clockIn : undefined;
+  const finalClockOut = clockOut !== undefined ? clockOut : undefined;
+  if (finalClockIn && finalClockOut && finalClockOut <= finalClockIn) {
+    return NextResponse.json(
+      { error: "La hora de salida debe ser posterior a la hora de entrada" },
       { status: 400 },
     );
   }
@@ -106,6 +116,24 @@ export async function PATCH(request: Request) {
   let attendance = await prisma.attendance.findUnique({
     where: { userId_date: { userId, date } },
   });
+
+  // When updating only one field, validate against the existing record
+  if (attendance) {
+    const effectiveIn =
+      updateData.clockIn !== undefined
+        ? updateData.clockIn
+        : attendance.clockIn;
+    const effectiveOut =
+      updateData.clockOut !== undefined
+        ? updateData.clockOut
+        : attendance.clockOut;
+    if (effectiveIn && effectiveOut && effectiveOut <= effectiveIn) {
+      return NextResponse.json(
+        { error: "La hora de salida debe ser posterior a la hora de entrada" },
+        { status: 400 },
+      );
+    }
+  }
 
   if (attendance) {
     attendance = await prisma.attendance.update({

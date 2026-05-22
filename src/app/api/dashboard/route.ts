@@ -22,7 +22,14 @@ export async function GET(request: Request) {
         include: { user: { select: { name: true, hourlyRate: true } } },
         orderBy: { user: { name: "asc" } },
       }),
-      prisma.absence.count({ where: { date: today } }),
+      prisma.leaveRequest.count({
+        where: {
+          startDate: { lte: today },
+          endDate: { gte: today },
+          type: { not: "HOLIDAY" },
+          userId: { not: null },
+        },
+      }),
       prisma.leaveRequest.findMany({
         where: {
           startDate: { lte: today },

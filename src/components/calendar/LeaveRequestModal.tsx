@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calendar, FileText, Send, Clock, Users } from "lucide-react";
+import { X, FileText, Send, Clock, Users } from "lucide-react";
 
 const LEAVE_TYPES = [
   {
@@ -104,6 +104,22 @@ export function LeaveRequestModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    // Non-admin: validate dates are today or future
+    if (!isAdmin) {
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      if (startDate < todayStr) {
+        setError("Solo puedes planificar ausencias a partir de hoy");
+        return;
+      }
+    }
+
+    if (startDate > endDate) {
+      setError("La fecha de inicio no puede ser posterior a la fecha de fin");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -184,50 +200,9 @@ export function LeaveRequestModal({
                 </motion.div>
               )}
 
-              {/* Date range */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
-                    Fecha inicio
-                  </label>
-                  <div className="relative">
-                    <Calendar
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => {
-                        setStartDate(e.target.value);
-                        if (e.target.value > endDate)
-                          setEndDate(e.target.value);
-                      }}
-                      className="w-full pl-9 pr-3 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 outline-none transition-all text-sm"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
-                    Fecha fin
-                  </label>
-                  <div className="relative">
-                    <Calendar
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                    <input
-                      type="date"
-                      value={endDate}
-                      min={startDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 outline-none transition-all text-sm"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
+              {/* Date range (hidden, set from calendar selection) */}
+              <input type="hidden" value={startDate} />
+              <input type="hidden" value={endDate} />
 
               {/* Type selection */}
               <div>

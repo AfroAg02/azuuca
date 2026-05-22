@@ -122,7 +122,12 @@ export function CalendarView() {
     const to = format(rangeEnd, "yyyy-MM-dd");
 
     try {
-      const res = await fetch(`/api/calendar?from=${from}&to=${to}`);
+      const res = await fetch(
+        `/api/calendar?from=${from}&to=${to}&_t=${Date.now()}`,
+        {
+          cache: "no-store",
+        },
+      );
       if (res.ok) {
         setLeaveRequests(await res.json());
       } else {
@@ -259,6 +264,30 @@ export function CalendarView() {
     await fetchLeaveRequests(currentDate);
   }
 
+  // Update leave dates
+  async function handleUpdate(id: string, startDate: string, endDate: string) {
+    const res = await fetch(`/api/calendar/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startDate, endDate }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      sileo.error({
+        title: "Error al actualizar",
+        description: err.error || "No se pudo actualizar la ausencia",
+      });
+      throw new Error(err.error || "Error al actualizar la ausencia");
+    }
+
+    sileo.success({
+      title: "Ausencia actualizada",
+      description: "Las fechas fueron modificadas correctamente",
+    });
+    await fetchLeaveRequests(currentDate);
+  }
+
   // Navigation
   function navigatePrev() {
     setCurrentDate((d) =>
@@ -373,6 +402,7 @@ export function CalendarView() {
           culture="es"
           toolbar={false}
           popup
+          length={31}
           style={{ minHeight: 600 }}
         />
       </div>
@@ -394,6 +424,7 @@ export function CalendarView() {
         isAdmin={isAdmin}
         currentUserId={currentUserId}
         onDelete={handleDelete}
+        onUpdate={handleUpdate}
       />
     </div>
   );

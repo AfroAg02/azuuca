@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getTodayInTimezone, getTimezoneFromRequest } from "@/lib/timezone";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -81,6 +82,16 @@ export async function POST(req: NextRequest) {
   }
 
   const isAdmin = session.user.role === "ADMIN";
+  const timezone = getTimezoneFromRequest(req);
+  const today = getTodayInTimezone(timezone);
+
+  // Non-admin users can only create absences from today onwards
+  if (!isAdmin && startDate < today) {
+    return NextResponse.json(
+      { error: "Solo puedes planificar ausencias a partir de hoy" },
+      { status: 400 },
+    );
+  }
 
   // HOLIDAY: only admin, applies to everyone (userId = null), requires hours
   if (type === "HOLIDAY") {

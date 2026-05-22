@@ -20,8 +20,10 @@ import {
   Save,
   ChevronLeft,
   ChevronRight,
+  BarChart3,
 } from "lucide-react";
 import { sileo } from "sileo";
+import { UserDashboard } from "@/components/UserDashboard";
 
 interface AttendanceRecord {
   id: string;
@@ -54,6 +56,20 @@ interface HolidayInfo {
   hours: number | null;
 }
 
+interface SummaryUser {
+  id: string;
+  name: string;
+  hourlyRate: number;
+  days: Record<string, { hoursWorked: number; earnings: number }>;
+  totalHours: number;
+  totalEarnings: number;
+}
+
+interface SummaryData {
+  dates: string[];
+  users: SummaryUser[];
+}
+
 const container = {
   hidden: { opacity: 0 },
   show: {
@@ -67,8 +83,20 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
+function formatShortDate(date: string) {
+  const d = new Date(date + "T12:00:00");
+  return d.toLocaleDateString("es", { day: "numeric", month: "short" });
+}
+
+function formatDayHeader(date: string) {
+  const d = new Date(date + "T12:00:00");
+  const day = d.toLocaleDateString("es", { weekday: "short" });
+  const num = d.getDate();
+  return `${day} ${num}`;
+}
+
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
@@ -91,11 +119,31 @@ export default function DashboardPage() {
   const [editClockIn, setEditClockIn] = useState("");
   const [editClockOut, setEditClockOut] = useState("");
   const [saving, setSaving] = useState(false);
+  const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useEffect(() => {
-    fetchDashboard(selectedDate);
-  }, [selectedDate]);
+    if (isAdmin) fetchDashboard(selectedDate);
+  }, [selectedDate, isAdmin]);
+
+  useEffect(() => {
+    if (isAdmin) fetchSummary(fromDate, toDate);
+  }, [fromDate, toDate, isAdmin]);
+
+  async function fetchSummary(from: string, to: string) {
+    setSummaryLoading(true);
+    try {
+      const res = await fetch(`/api/dashboard/summary?from=${from}&to=${to}`);
+      if (res.ok) {
+        setSummaryData(await res.json());
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSummaryLoading(false);
+    }
+  }
 
   async function fetchDashboard(date: string) {
     setLoading(true);
@@ -150,6 +198,14 @@ export default function DashboardPage() {
   }
 
   function handleExport() {
+    if (fromDate > toDate) {
+      sileo.error({
+        title: "Rango inválido",
+        description:
+          "La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'",
+      });
+      return;
+    }
     window.open(`/api/export?from=${fromDate}&to=${toDate}`, "_blank");
   }
 
@@ -161,6 +217,16 @@ export default function DashboardPage() {
 
   async function handleSaveEdit() {
     if (!editRecord) return;
+
+    if (editClockIn && editClockOut && editClockOut <= editClockIn) {
+      sileo.error({
+        title: "Horario inválido",
+        description:
+          "La hora de salida debe ser posterior a la hora de entrada",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch("/api/attendance", {
@@ -198,6 +264,22 @@ export default function DashboardPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (status === "loading") {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-10 h-10 border-3 border-blue-200 border-t-blue-600 rounded-full"
+        />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return <UserDashboard />;
   }
 
   if (loading) {
@@ -465,6 +547,163 @@ export default function DashboardPage() {
                   </motion.tr>
                 ))}
               </tbody>
+            </table>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Hours Summary Table */}
+      <motion.div variants={item} className="glass rounded-2xl overflow-hidden">
+        <div className="p-5 border-b border-gray-100/50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BarChart3 size={18} className="text-purple-500" />
+            <h2 className="text-lg font-semibold text-gray-900">
+              Resumen de Horas Trabajadas
+            </h2>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span>{formatShortDate(fromDate)}</span>
+            <span>—</span>
+            <span>{formatShortDate(toDate)}</span>
+          </div>
+        </div>
+        {summaryLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-8 h-8 border-3 border-purple-200 border-t-purple-600 rounded-full"
+            />
+          </div>
+        ) : !summaryData || summaryData.users.length === 0 ? (
+          <div className="p-12 text-center">
+            <AlertCircle size={40} className="mx-auto text-gray-300 mb-3" />
+            <p className="text-gray-400">
+              No hay datos en el rango seleccionado
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gradient-to-r from-gray-50/80 to-gray-100/50">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
+                    Empleado
+                  </th>
+                  {summaryData.dates.map((date) => (
+                    <th
+                      key={date}
+                      className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                    >
+                      {formatDayHeader(date)}
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-purple-600 uppercase tracking-wider bg-purple-50/50">
+                    Total Horas
+                  </th>
+                  {isAdmin && (
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-emerald-600 uppercase tracking-wider bg-emerald-50/50">
+                      Total $
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100/50">
+                {summaryData.users.map((user, i) => (
+                  <motion.tr
+                    key={user.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    className="hover:bg-blue-50/30 transition-colors"
+                  >
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full gradient-card-blue flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-[10px] font-bold">
+                            {user.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="truncate max-w-[120px]">
+                          {user.name}
+                        </span>
+                      </div>
+                    </td>
+                    {summaryData.dates.map((date) => {
+                      const day = user.days[date];
+                      return (
+                        <td
+                          key={date}
+                          className="px-3 py-3 text-center text-sm"
+                        >
+                          {day && day.hoursWorked > 0 ? (
+                            <span className="font-mono text-indigo-600 font-medium">
+                              {day.hoursWorked.toFixed(1)}
+                            </span>
+                          ) : day ? (
+                            <span className="text-amber-400 text-xs">0</span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                    <td className="px-4 py-3 text-center text-sm bg-purple-50/30">
+                      <span className="inline-flex items-center gap-1 font-mono font-bold text-purple-700">
+                        <Timer size={12} />
+                        {user.totalHours.toFixed(1)}h
+                      </span>
+                    </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-center text-sm bg-emerald-50/30">
+                        <span className="inline-flex items-center gap-1 font-mono font-bold text-emerald-700">
+                          <DollarSign size={12} />
+                          {user.totalEarnings.toFixed(2)}
+                        </span>
+                      </td>
+                    )}
+                  </motion.tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-gray-50/80 font-semibold">
+                  <td className="px-4 py-3 text-sm text-gray-700 sticky left-0 bg-gray-50 z-10">
+                    Totales
+                  </td>
+                  {summaryData.dates.map((date) => {
+                    const total = summaryData.users.reduce(
+                      (sum, u) => sum + (u.days[date]?.hoursWorked || 0),
+                      0,
+                    );
+                    return (
+                      <td
+                        key={date}
+                        className="px-3 py-3 text-center text-xs font-mono text-gray-600"
+                      >
+                        {total > 0 ? total.toFixed(1) : "—"}
+                      </td>
+                    );
+                  })}
+                  <td className="px-4 py-3 text-center text-sm bg-purple-100/50">
+                    <span className="font-mono font-bold text-purple-800">
+                      {summaryData.users
+                        .reduce((sum, u) => sum + u.totalHours, 0)
+                        .toFixed(1)}
+                      h
+                    </span>
+                  </td>
+                  {isAdmin && (
+                    <td className="px-4 py-3 text-center text-sm bg-emerald-100/50">
+                      <span className="font-mono font-bold text-emerald-800">
+                        $
+                        {summaryData.users
+                          .reduce((sum, u) => sum + u.totalEarnings, 0)
+                          .toFixed(2)}
+                      </span>
+                    </td>
+                  )}
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

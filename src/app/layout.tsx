@@ -44,7 +44,7 @@ export default function RootLayout({
             © {new Date().getFullYear()} AfroAg02. Todos los derechos
             reservados.
           </footer>
-          <Toaster position="top-right" />
+          <Toaster position="bottom-right" />
           <PWARegister />
           <PWAInstallButton />
         </AuthProvider>

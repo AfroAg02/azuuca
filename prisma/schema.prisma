@@ -18,7 +18,6 @@ model User {
   updatedAt  DateTime @updatedAt
 
   attendances   Attendance[]
-  absences      Absence[]
   leaveRequests  LeaveRequest[] @relation("UserLeaveRequests")
   createdLeaves  LeaveRequest[] @relation("CreatorLeaveRequests")
 }
@@ -29,18 +28,6 @@ model Attendance {
   date     String  // YYYY-MM-DD
   clockIn  String? // HH:mm:ss
   clockOut String? // HH:mm:ss
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, date])
-}
-
-model Absence {
-  id     String @id @default(cuid())
-  userId String
-  date   String // YYYY-MM-DD
-  reason String
-  type   String // ILLNESS, EVENT, PLANNED, OTHER
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

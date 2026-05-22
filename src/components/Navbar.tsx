@@ -16,6 +16,7 @@ import {
   LogOut,
   Menu,
   X,
+  Download,
 } from "lucide-react";
 import { PWAInstallNavButton } from "./PWAInstallButton";
 
@@ -26,6 +27,7 @@ const iconMap: Record<string, React.ReactNode> = {
   "/calendar": <CalendarDays size={18} />,
   "/absences": <CalendarOff size={18} />,
   "/profile": <UserCircle size={18} />,
+  "/install": <Download size={18} />,
 };
 
 export function Navbar() {
@@ -39,14 +41,11 @@ export function Navbar() {
 
   const links = [
     { href: "/", label: "Inicio" },
-    ...(isAdmin
-      ? [
-          { href: "/dashboard", label: "Dashboard" },
-          { href: "/users", label: "Usuarios" },
-        ]
-      : []),
+    { href: "/dashboard", label: "Dashboard" },
+    ...(isAdmin ? [{ href: "/users", label: "Usuarios" }] : []),
     { href: "/calendar", label: "Calendario" },
     { href: "/absences", label: "Ausencias" },
+    { href: "/install", label: "Instalar" },
     { href: "/profile", label: "Perfil" },
   ];
 
