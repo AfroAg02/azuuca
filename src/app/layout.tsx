@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { AuthProvider } from "@/components/AuthProvider";
 import { PWARegister } from "@/components/PWARegister";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
+import { Toaster } from "sileo";
 
 export const metadata: Metadata = {
   title: "Control de Asistencia",
@@ -43,6 +44,7 @@ export default function RootLayout({
             © {new Date().getFullYear()} AfroAg02. Todos los derechos
             reservados.
           </footer>
+          <Toaster position="top-right" />
           <PWARegister />
           <PWAInstallButton />
         </AuthProvider>

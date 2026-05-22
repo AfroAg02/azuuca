@@ -17,8 +17,10 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  attendances Attendance[]
-  absences    Absence[]
+  attendances   Attendance[]
+  absences      Absence[]
+  leaveRequests  LeaveRequest[] @relation("UserLeaveRequests")
+  createdLeaves  LeaveRequest[] @relation("CreatorLeaveRequests")
 }
 
 model Attendance {
@@ -43,4 +45,20 @@ model Absence {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date])
+}
+
+model LeaveRequest {
+  id         String   @id @default(cuid())
+  userId     String?  // null for HOLIDAY (applies to everyone)
+  createdBy  String   // who registered it
+  startDate  String   // YYYY-MM-DD
+  endDate    String   // YYYY-MM-DD
+  type       String   // VACATION, MEDICAL, PAID_LEAVE, UNJUSTIFIED, HOLIDAY
+  reason     String
+  hours      Float?   // only for HOLIDAY — paid hours for that day
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user    User? @relation("UserLeaveRequests", fields: [userId], references: [id], onDelete: Cascade)
+  creator User  @relation("CreatorLeaveRequests", fields: [createdBy], references: [id])
 }

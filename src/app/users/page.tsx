@@ -16,7 +16,11 @@ import {
   DollarSign,
   Pencil,
   Check,
+  CalendarDays,
+  Save,
 } from "lucide-react";
+import { LeaveRequestModal } from "@/components/calendar/LeaveRequestModal";
+import { sileo } from "sileo";
 
 interface UserData {
   id: string;
@@ -51,13 +55,39 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editRate, setEditRate] = useState("");
 
+  // Edit user modal
+  const [editModalUser, setEditModalUser] = useState<UserData | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editRole, setEditRole] = useState("USER");
+  const [editHourlyRate, setEditHourlyRate] = useState("");
+  const [editError, setEditError] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
+  // Absence modal
+  const [absenceUserId, setAbsenceUserId] = useState<string | null>(null);
+  const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
+
   useEffect(() => {
     fetchUsers();
   }, []);
 
   async function fetchUsers() {
-    const res = await fetch("/api/users");
-    if (res.ok) setUsers(await res.json());
+    try {
+      const res = await fetch("/api/users");
+      if (res.ok) setUsers(await res.json());
+      else
+        sileo.error({
+          title: "Error al cargar",
+          description: "No se pudieron obtener los usuarios",
+        });
+    } catch {
+      sileo.error({
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servidor",
+      });
+    }
     setLoading(false);
   }
 
@@ -84,10 +114,18 @@ export default function UsersPage() {
       setPassword("");
       setRole("USER");
       setHourlyRate("");
+      sileo.success({
+        title: "Usuario creado",
+        description: "El nuevo usuario fue registrado",
+      });
       fetchUsers();
     } else {
       const data = await res.json();
       setError(data.error || "Error al crear usuario");
+      sileo.error({
+        title: "Error al crear",
+        description: data.error || "No se pudo crear el usuario",
+      });
     }
   }
 
@@ -96,10 +134,17 @@ export default function UsersPage() {
 
     const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
     if (res.ok) {
+      sileo.success({
+        title: "Usuario eliminado",
+        description: `"${userName}" fue eliminado`,
+      });
       fetchUsers();
     } else {
       const data = await res.json();
-      alert(data.error || "Error al eliminar");
+      sileo.error({
+        title: "Error al eliminar",
+        description: data.error || "No se pudo eliminar el usuario",
+      });
     }
   }
 
@@ -116,8 +161,100 @@ export default function UsersPage() {
     });
     if (res.ok) {
       setEditingId(null);
+      sileo.success({ title: "Tarifa actualizada" });
       fetchUsers();
+    } else {
+      sileo.error({
+        title: "Error al actualizar",
+        description: "No se pudo guardar la tarifa",
+      });
     }
+  }
+
+  function openEditModal(user: UserData) {
+    setEditModalUser(user);
+    setEditName(user.name);
+    setEditEmail(user.email);
+    setEditPassword("");
+    setEditRole(user.role);
+    setEditHourlyRate(String(user.hourlyRate));
+    setEditError("");
+  }
+
+  function closeEditModal() {
+    setEditModalUser(null);
+    setEditError("");
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editModalUser) return;
+    setEditError("");
+    setEditSaving(true);
+
+    const payload: Record<string, string | number> = {
+      name: editName,
+      email: editEmail,
+      role: editRole,
+      hourlyRate: parseFloat(editHourlyRate) || 0,
+    };
+    if (editPassword) payload.password = editPassword;
+
+    const res = await fetch(`/api/users/${editModalUser.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      closeEditModal();
+      sileo.success({
+        title: "Usuario actualizado",
+        description: "Los datos fueron guardados",
+      });
+      fetchUsers();
+    } else {
+      const data = await res.json();
+      setEditError(data.error || "Error al actualizar");
+      sileo.error({
+        title: "Error al actualizar",
+        description: data.error || "No se pudieron guardar los cambios",
+      });
+    }
+    setEditSaving(false);
+  }
+
+  function openAbsenceModal(userId: string) {
+    setAbsenceUserId(userId);
+    setAbsenceModalOpen(true);
+  }
+
+  async function handleCreateAbsence(data: {
+    startDate: string;
+    endDate: string;
+    type: string;
+    reason: string;
+    userId?: string;
+    hours?: number;
+  }) {
+    const payload = { ...data, userId: absenceUserId };
+    const res = await fetch("/api/calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      sileo.error({
+        title: "Error al registrar",
+        description: err.error || "No se pudo registrar la ausencia",
+      });
+      throw new Error(err.error || "Error al registrar la ausencia");
+    }
+    sileo.success({
+      title: "Ausencia registrada",
+      description: "La ausencia fue guardada correctamente",
+    });
   }
 
   if (loading) {
@@ -415,16 +552,37 @@ export default function UsersPage() {
                     )}
                   </td>
                   <td className="px-5 py-4 text-sm">
-                    {(session?.user as any)?.id !== user.id && (
+                    <div className="flex items-center gap-1">
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        onClick={() => handleDelete(user.id, user.name)}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        onClick={() => openEditModal(user)}
+                        className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        title="Editar usuario"
                       >
-                        <Trash2 size={16} />
+                        <Pencil size={16} />
                       </motion.button>
-                    )}
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => openAbsenceModal(user.id)}
+                        className="p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        title="Registrar ausencia"
+                      >
+                        <CalendarDays size={16} />
+                      </motion.button>
+                      {(session?.user as any)?.id !== user.id && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleDelete(user.id, user.name)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          title="Eliminar usuario"
+                        >
+                          <Trash2 size={16} />
+                        </motion.button>
+                      )}
+                    </div>
                   </td>
                 </motion.tr>
               ))}
@@ -432,6 +590,178 @@ export default function UsersPage() {
           </table>
         </div>
       </motion.div>
+
+      {/* Edit User Modal */}
+      <AnimatePresence>
+        {editModalUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            onClick={closeEditModal}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+              className="w-full max-w-lg glass-strong rounded-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl gradient-btn flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <Pencil size={16} className="text-white" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Editar Usuario
+                  </h2>
+                </div>
+                <button
+                  onClick={closeEditModal}
+                  className="p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+                {editError && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="bg-red-50 border border-red-100 text-red-600 p-3 rounded-xl text-sm flex items-center gap-2"
+                  >
+                    <AlertTriangle size={16} />
+                    {editError}
+                  </motion.div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+                      Nombre
+                    </label>
+                    <div className="relative">
+                      <User
+                        size={16}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      />
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 outline-none transition-all text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail
+                        size={16}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      />
+                      <input
+                        type="email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 outline-none transition-all text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+                      Contraseña
+                    </label>
+                    <div className="relative">
+                      <Lock
+                        size={16}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      />
+                      <input
+                        type="password"
+                        value={editPassword}
+                        onChange={(e) => setEditPassword(e.target.value)}
+                        placeholder="Dejar vacío para no cambiar"
+                        className="w-full pl-9 pr-3 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 outline-none transition-all text-sm"
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+                      Rol
+                    </label>
+                    <div className="relative">
+                      <Shield
+                        size={16}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      />
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 outline-none transition-all appearance-none text-sm"
+                      >
+                        <option value="USER">Usuario</option>
+                        <option value="ADMIN">Administrador</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
+                      Tarifa por hora
+                    </label>
+                    <div className="relative">
+                      <DollarSign
+                        size={16}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={editHourlyRate}
+                        onChange={(e) => setEditHourlyRate(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 outline-none transition-all text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={closeEditModal}
+                    className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editSaving}
+                    className="px-5 py-2.5 text-sm font-medium text-white gradient-btn rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <Save size={16} />
+                    {editSaving ? "Guardando..." : "Guardar Cambios"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Absence Modal */}
+      <LeaveRequestModal
+        isOpen={absenceModalOpen}
+        onClose={() => setAbsenceModalOpen(false)}
+        onSubmit={handleCreateAbsence}
+        isAdmin={true}
+      />
     </motion.div>
   );
 }

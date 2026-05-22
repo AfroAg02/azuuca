@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { sileo } from "sileo";
 
 interface AttendanceRecord {
   id: string;
@@ -37,6 +38,20 @@ interface DashboardStats {
   totalUsers: number;
   presentToday: number;
   absentToday: number;
+}
+
+interface PlannedLeave {
+  id: string;
+  userName: string;
+  type: string;
+  reason: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface HolidayInfo {
+  name: string;
+  hours: number | null;
 }
 
 const container = {
@@ -57,6 +72,8 @@ export default function DashboardPage() {
   const isAdmin = session?.user?.role === "ADMIN";
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [plannedLeaves, setPlannedLeaves] = useState<PlannedLeave[]>([]);
+  const [holiday, setHoliday] = useState<HolidayInfo | null>(null);
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
@@ -90,7 +107,19 @@ export default function DashboardPage() {
         const data = await res.json();
         setStats(data.stats);
         setRecords(data.todayRecords);
+        setPlannedLeaves(data.plannedLeaves || []);
+        setHoliday(data.holiday || null);
+      } else {
+        sileo.error({
+          title: "Error al cargar",
+          description: "No se pudo cargar el dashboard",
+        });
       }
+    } catch {
+      sileo.error({
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servidor",
+      });
     } finally {
       setLoading(false);
     }
@@ -149,8 +178,23 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         setEditRecord(null);
+        sileo.success({
+          title: "Registro actualizado",
+          description: "Los cambios fueron guardados",
+        });
         fetchDashboard(selectedDate);
+      } else {
+        const err = await res.json().catch(() => null);
+        sileo.error({
+          title: "Error al actualizar",
+          description: err?.error || "No se pudo guardar el registro",
+        });
       }
+    } catch {
+      sileo.error({
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servidor",
+      });
     } finally {
       setSaving(false);
     }
@@ -210,6 +254,59 @@ export default function DashboardPage() {
           gradient="gradient-card-red"
         />
       </motion.div>
+
+      {/* Holiday & Planned Leaves */}
+      {(holiday || plannedLeaves.length > 0) && (
+        <motion.div variants={item} className="space-y-3">
+          {holiday && (
+            <div className="glass rounded-2xl p-4 border-l-4 border-amber-400 bg-amber-50/50">
+              <div className="flex items-center gap-2">
+                <Calendar size={18} className="text-amber-500" />
+                <span className="font-semibold text-amber-700">Feriado</span>
+              </div>
+              <p className="mt-1 text-sm text-amber-600">
+                {holiday.name}
+                {holiday.hours != null && (
+                  <span className="ml-2 text-xs font-medium bg-amber-200/60 px-2 py-0.5 rounded-full">
+                    {holiday.hours}h remuneradas
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+          {plannedLeaves.length > 0 && (
+            <div className="glass rounded-2xl p-4 border-l-4 border-blue-400 bg-blue-50/50">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle size={18} className="text-blue-500" />
+                <span className="font-semibold text-blue-700">
+                  Ausencias planificadas
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {plannedLeaves.map((l) => (
+                  <div
+                    key={l.id}
+                    className="flex items-center gap-2 text-sm text-blue-600"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                    <span className="font-medium">{l.userName}</span>
+                    <span className="text-blue-400">—</span>
+                    <span>{l.reason}</span>
+                    <span className="text-xs bg-blue-200/60 px-2 py-0.5 rounded-full">
+                      {{
+                        VACATION: "Vacaciones",
+                        MEDICAL: "Médica",
+                        PAID_LEAVE: "Permiso",
+                        UNJUSTIFIED: "Injustificada",
+                      }[l.type] || l.type}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Attendance Table with Date Navigation */}
       <motion.div variants={item} className="glass rounded-2xl overflow-hidden">

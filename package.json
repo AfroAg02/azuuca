@@ -14,18 +14,22 @@
   "dependencies": {
     "@prisma/client": "^5.20.0",
     "bcryptjs": "^2.4.3",
+    "date-fns": "^4.2.1",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.16.0",
     "next": "14.2.15",
     "next-auth": "^4.24.8",
     "react": "^18.3.1",
+    "react-big-calendar": "^1.19.4",
     "react-dom": "^18.3.1",
+    "sileo": "^0.1.5",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.16.0",
     "@types/react": "^18.3.8",
+    "@types/react-big-calendar": "^1.16.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",

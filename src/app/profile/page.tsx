@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
+import { sileo } from "sileo";
 
 export default function ProfilePage() {
   const { data: session, update } = useSession();
@@ -47,11 +48,19 @@ export default function ProfilePage() {
 
       if (res.ok) {
         setMessage("Perfil actualizado correctamente");
+        sileo.success({
+          title: "Perfil actualizado",
+          description: "Tus datos fueron guardados",
+        });
         setPassword("");
         await update();
       } else {
         const data = await res.json();
         setError(data.error || "Error al actualizar");
+        sileo.error({
+          title: "Error al actualizar",
+          description: data.error || "No se pudo guardar el perfil",
+        });
       }
     } finally {
       setLoading(false);

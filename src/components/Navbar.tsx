@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Users,
   CalendarOff,
+  CalendarDays,
   UserCircle,
   LogOut,
   Menu,
@@ -22,6 +23,7 @@ const iconMap: Record<string, React.ReactNode> = {
   "/": <Home size={18} />,
   "/dashboard": <LayoutDashboard size={18} />,
   "/users": <Users size={18} />,
+  "/calendar": <CalendarDays size={18} />,
   "/absences": <CalendarOff size={18} />,
   "/profile": <UserCircle size={18} />,
 };
@@ -43,6 +45,7 @@ export function Navbar() {
           { href: "/users", label: "Usuarios" },
         ]
       : []),
+    { href: "/calendar", label: "Calendario" },
     { href: "/absences", label: "Ausencias" },
     { href: "/profile", label: "Perfil" },
   ];
@@ -133,12 +136,7 @@ export function Navbar() {
             >
               <div className="pb-4 space-y-1">
                 <div className="flex items-center px-3 py-2 mb-2">
-                  <Image
-                    src="/logo.svg"
-                    alt="Logo"
-                    width={100}
-                    height={30}
-                  />
+                  <Image src="/logo.svg" alt="Logo" width={100} height={30} />
                 </div>
                 {links.map((link, i) => (
                   <motion.div

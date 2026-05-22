@@ -12,6 +12,7 @@ import {
   Save,
 } from "lucide-react";
 import { AttendanceButton } from "@/components/AttendanceButton";
+import { sileo } from "sileo";
 
 interface AttendanceData {
   id: string;
@@ -49,20 +50,42 @@ export default function HomePage() {
       if (res.ok) {
         const data = await res.json();
         setAttendance(data);
+      } else {
+        sileo.error({ title: "Error al cargar la asistencia" });
       }
+    } catch {
+      sileo.error({ title: "Error de conexión al cargar asistencia" });
     } finally {
       setLoading(false);
     }
   }
 
   async function handleClock() {
-    const res = await fetch("/api/attendance", {
-      method: "POST",
-      headers: { "x-timezone": timezone },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setAttendance(data);
+    try {
+      const res = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "x-timezone": timezone },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAttendance(data);
+        const isEntry = !attendance?.clockIn;
+        sileo.success({
+          title: isEntry ? "Entrada registrada" : "Salida registrada",
+          description: "Asistencia guardada correctamente",
+        });
+      } else {
+        const err = await res.json().catch(() => null);
+        sileo.error({
+          title: "Error al registrar",
+          description: err?.error || "No se pudo registrar la asistencia",
+        });
+      }
+    } catch {
+      sileo.error({
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servidor",
+      });
     }
   }
 
@@ -103,7 +126,22 @@ export default function HomePage() {
         setShowAbsence(false);
         setAbsenceReason("");
         setAbsenceType("ILLNESS");
+        sileo.success({
+          title: "Ausencia registrada",
+          description: "Tu ausencia fue guardada correctamente",
+        });
+      } else {
+        const err = await res.json().catch(() => null);
+        sileo.error({
+          title: "Error al registrar",
+          description: err?.error || "No se pudo registrar la ausencia",
+        });
       }
+    } catch {
+      sileo.error({
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servidor",
+      });
     } finally {
       setSavingAbsence(false);
     }

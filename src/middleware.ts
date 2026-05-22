@@ -29,6 +29,7 @@ export const config = {
     "/dashboard/:path*",
     "/users/:path*",
     "/profile/:path*",
+    "/calendar/:path*",
     "/absences/:path*",
   ],
 };

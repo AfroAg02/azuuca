@@ -38,6 +38,127 @@
   }
 }
 
+/* react-big-calendar overrides */
+.calendar-wrapper .rbc-calendar {
+  font-family: "Inter", sans-serif;
+}
+
+.calendar-wrapper .rbc-header {
+  padding: 8px 4px;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.calendar-wrapper .rbc-month-view,
+.calendar-wrapper .rbc-time-view {
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.calendar-wrapper .rbc-month-row + .rbc-month-row {
+  border-top: 1px solid #f3f4f6;
+}
+
+.calendar-wrapper .rbc-day-bg + .rbc-day-bg {
+  border-left: 1px solid #f3f4f6;
+}
+
+.calendar-wrapper .rbc-header + .rbc-header {
+  border-left: 1px solid #f3f4f6;
+}
+
+.calendar-wrapper .rbc-off-range-bg {
+  background-color: #fafafa;
+}
+
+.calendar-wrapper .rbc-today {
+  background-color: #eff6ff;
+}
+
+.calendar-wrapper .rbc-day-bg {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.calendar-wrapper .rbc-day-bg:hover {
+  background-color: #e0e7ff;
+}
+
+.calendar-wrapper .rbc-day-bg.rbc-off-range-bg:hover {
+  background-color: #f0f0f0;
+}
+
+.calendar-wrapper .rbc-today:hover {
+  background-color: #dbeafe;
+}
+
+.calendar-wrapper .rbc-date-cell {
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.calendar-wrapper .rbc-date-cell.rbc-now {
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.calendar-wrapper .rbc-event {
+  cursor: pointer;
+
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  padding: 2px 6px !important;
+  border: none !important;
+}
+
+.calendar-wrapper .rbc-event:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
+.calendar-wrapper .rbc-show-more {
+  font-size: 11px;
+  font-weight: 600;
+  color: #3b82f6;
+  padding: 2px 4px;
+}
+
+.calendar-wrapper .rbc-agenda-view table.rbc-agenda-table {
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.calendar-wrapper .rbc-agenda-view table.rbc-agenda-table thead > tr > th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  border-bottom: 1px solid #f3f4f6;
+  background-color: #f9fafb;
+}
+
+.calendar-wrapper .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+  padding: 10px 12px;
+  font-size: 13px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.calendar-wrapper .rbc-agenda-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
 /* Smooth scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

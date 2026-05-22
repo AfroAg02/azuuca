@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Inbox,
 } from "lucide-react";
+import { sileo } from "sileo";
 
 interface Absence {
   id: string;
@@ -68,8 +69,20 @@ export default function AbsencesPage() {
   }, []);
 
   async function fetchAbsences() {
-    const res = await fetch("/api/absences");
-    if (res.ok) setAbsences(await res.json());
+    try {
+      const res = await fetch("/api/absences");
+      if (res.ok) setAbsences(await res.json());
+      else
+        sileo.error({
+          title: "Error al cargar",
+          description: "No se pudieron obtener las ausencias",
+        });
+    } catch {
+      sileo.error({
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servidor",
+      });
+    }
     setLoading(false);
   }
 
@@ -77,17 +90,34 @@ export default function AbsencesPage() {
     e.preventDefault();
     setMessage("");
 
-    const res = await fetch("/api/absences", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, type, reason }),
-    });
+    try {
+      const res = await fetch("/api/absences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, type, reason }),
+      });
 
-    if (res.ok) {
-      setMessage("Ausencia registrada correctamente");
-      setDate("");
-      setReason("");
-      fetchAbsences();
+      if (res.ok) {
+        setMessage("Ausencia registrada correctamente");
+        sileo.success({
+          title: "Ausencia registrada",
+          description: "Tu ausencia fue guardada correctamente",
+        });
+        setDate("");
+        setReason("");
+        fetchAbsences();
+      } else {
+        const err = await res.json().catch(() => null);
+        sileo.error({
+          title: "Error al registrar",
+          description: err?.error || "No se pudo registrar la ausencia",
+        });
+      }
+    } catch {
+      sileo.error({
+        title: "Error de conexión",
+        description: "No se pudo conectar con el servidor",
+      });
     }
   }
 

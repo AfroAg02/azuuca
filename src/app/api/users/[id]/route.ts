@@ -22,7 +22,7 @@ export async function PUT(
   }
 
   const body = await req.json();
-  const { name, email, password, hourlyRate } = body;
+  const { name, email, password, hourlyRate, role } = body;
 
   const data: Record<string, string | number> = {};
   if (name) data.name = name;
@@ -38,9 +38,15 @@ export async function PUT(
     data.email = email;
   }
   if (password) data.password = await bcrypt.hash(password, 12);
-  console.log("Password:", data.password);
   if (hourlyRate !== undefined && session.user.role === "ADMIN") {
     data.hourlyRate = parseFloat(String(hourlyRate));
+  }
+  if (
+    role &&
+    session.user.role === "ADMIN" &&
+    ["USER", "ADMIN"].includes(role)
+  ) {
+    data.role = role;
   }
 
   const user = await prisma.user.update({

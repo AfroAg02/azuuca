@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Mail, Lock, ArrowRight } from "lucide-react";
+import { sileo } from "sileo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -26,8 +27,16 @@ export default function LoginPage() {
 
     if (res?.error) {
       setError("Credenciales incorrectas");
+      sileo.error({
+        title: "Credenciales incorrectas",
+        description: "Verifica tu email y contraseña",
+      });
       setLoading(false);
     } else {
+      sileo.success({
+        title: "Bienvenido",
+        description: "Sesión iniciada correctamente",
+      });
       router.push("/");
       router.refresh();
     }
@@ -57,7 +66,7 @@ export default function LoginPage() {
             src="/logo.svg"
             alt="Logo"
             className="mx-auto mb-4"
-            style={{ width: 180, height: 'auto' }}
+            style={{ width: 180, height: "auto" }}
           />
           <p className="text-gray-400 mt-1 text-sm">Control de Asistencia</p>
         </motion.div>
