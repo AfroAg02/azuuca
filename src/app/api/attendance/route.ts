@@ -31,6 +31,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  if (!session.user.id) {
+    return NextResponse.json(
+      { error: "Sesión inválida. Inicia sesión de nuevo." },
+      { status: 401 },
+    );
+  }
+
   const timezone = getTimezoneFromRequest(request);
   const { date: today, time } = getNowInTimezone(timezone);
 

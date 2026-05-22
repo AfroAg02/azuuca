@@ -45,6 +45,21 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role;
         token.id = user.id as string;
       }
+      // Verify user still exists in DB periodically
+      if (token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { id: true, role: true },
+        });
+        if (!dbUser) {
+          // User was deleted — invalidate session
+          token.id = "";
+          token.role = "";
+          return token;
+        }
+        // Keep role in sync
+        token.role = dbUser.role;
+      }
       return token;
     },
     async session({ session, token }) {
