@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getTodayInTimezone, getTimezoneFromRequest } from "@/lib/timezone";
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -10,12 +11,8 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const today =
-    searchParams.get("date") ||
-    (() => {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    })();
+  const timezone = getTimezoneFromRequest(request);
+  const today = searchParams.get("date") || getTodayInTimezone(timezone);
 
   const [totalUsers, todayRecords, todayAbsences] = await Promise.all([
     prisma.user.count(),

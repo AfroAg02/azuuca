@@ -3,9 +3,10 @@ import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { AuthProvider } from "@/components/AuthProvider";
 import { PWARegister } from "@/components/PWARegister";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
 
 export const metadata: Metadata = {
-  title: "Azuuca - Control de Asistencia",
+  title: "Control de Asistencia",
   description: "Sistema de control de llegada y asistencia",
   manifest: "/manifest.json",
 };
@@ -43,6 +44,7 @@ export default function RootLayout({
             reservados.
           </footer>
           <PWARegister />
+          <PWAInstallButton />
         </AuthProvider>
       </body>
     </html>

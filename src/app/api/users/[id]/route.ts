@@ -38,6 +38,7 @@ export async function PUT(
     data.email = email;
   }
   if (password) data.password = await bcrypt.hash(password, 12);
+  console.log("Password:", data.password);
   if (hourlyRate !== undefined && session.user.role === "ADMIN") {
     data.hourlyRate = parseFloat(String(hourlyRate));
   }

@@ -39,9 +39,13 @@ export default function HomePage() {
     fetchTodayAttendance();
   }, []);
 
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   async function fetchTodayAttendance() {
     try {
-      const res = await fetch("/api/attendance");
+      const res = await fetch("/api/attendance", {
+        headers: { "x-timezone": timezone },
+      });
       if (res.ok) {
         const data = await res.json();
         setAttendance(data);
@@ -52,7 +56,10 @@ export default function HomePage() {
   }
 
   async function handleClock() {
-    const res = await fetch("/api/attendance", { method: "POST" });
+    const res = await fetch("/api/attendance", {
+      method: "POST",
+      headers: { "x-timezone": timezone },
+    });
     if (res.ok) {
       const data = await res.json();
       setAttendance(data);

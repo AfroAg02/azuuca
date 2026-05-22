@@ -2,25 +2,21 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-
-function getToday() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function getCurrentTime() {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
-}
+import {
+  getNowInTimezone,
+  getTodayInTimezone,
+  getTimezoneFromRequest,
+} from "@/lib/timezone";
 
 // GET: obtener asistencia de hoy del usuario actual
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const today = getToday();
+  const timezone = getTimezoneFromRequest(request);
+  const today = getTodayInTimezone(timezone);
   const attendance = await prisma.attendance.findUnique({
     where: { userId_date: { userId: session.user.id, date: today } },
   });
@@ -29,14 +25,14 @@ export async function GET() {
 }
 
 // POST: registrar entrada o salida
-export async function POST() {
+export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const today = getToday();
-  const time = getCurrentTime();
+  const timezone = getTimezoneFromRequest(request);
+  const { date: today, time } = getNowInTimezone(timezone);
 
   let attendance = await prisma.attendance.findUnique({
     where: { userId_date: { userId: session.user.id, date: today } },

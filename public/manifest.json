@@ -1,6 +1,6 @@
 {
-  "name": "Azuuca - Control de Asistencia",
-  "short_name": "Azuuca",
+  "name": "Control de Asistencia",
+  "short_name": "Asistencia",
   "description": "Sistema de control de llegada y asistencia",
   "start_url": "/",
   "display": "standalone",

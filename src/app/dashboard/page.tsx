@@ -74,6 +74,7 @@ export default function DashboardPage() {
   const [editClockIn, setEditClockIn] = useState("");
   const [editClockOut, setEditClockOut] = useState("");
   const [saving, setSaving] = useState(false);
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useEffect(() => {
     fetchDashboard(selectedDate);
@@ -82,7 +83,9 @@ export default function DashboardPage() {
   async function fetchDashboard(date: string) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/dashboard?date=${date}`);
+      const res = await fetch(`/api/dashboard?date=${date}`, {
+        headers: { "x-timezone": timezone },
+      });
       if (res.ok) {
         const data = await res.json();
         setStats(data.stats);
@@ -133,7 +136,10 @@ export default function DashboardPage() {
     try {
       const res = await fetch("/api/attendance", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-timezone": timezone,
+        },
         body: JSON.stringify({
           userId: editRecord.userId,
           date: editRecord.date,

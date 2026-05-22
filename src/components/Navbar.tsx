@@ -16,6 +16,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { PWAInstallNavButton } from "./PWAInstallButton";
 
 const iconMap: Record<string, React.ReactNode> = {
   "/": <Home size={18} />,
@@ -51,15 +52,14 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center gap-2 group">
+            <Link href="/" className="flex items-center group">
               <Image
                 src="/logo.svg"
-                alt="Azuuca"
-                width={32}
-                height={32}
-                className="rounded-lg shadow-md shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-shadow"
+                alt="Logo"
+                width={120}
+                height={36}
+                className="group-hover:opacity-80 transition-opacity"
               />
-              <span className="text-xl font-bold gradient-text">Azuuca</span>
             </Link>
             <div className="hidden sm:flex sm:ml-8 sm:space-x-1">
               {links.map((link) => (
@@ -93,6 +93,7 @@ export function Navbar() {
           </div>
 
           <div className="hidden sm:flex items-center gap-3">
+            <PWAInstallNavButton />
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100/80">
               <div className="w-6 h-6 rounded-full gradient-btn flex items-center justify-center">
                 <span className="text-white text-xs font-bold">
@@ -131,17 +132,13 @@ export function Navbar() {
               className="sm:hidden overflow-hidden"
             >
               <div className="pb-4 space-y-1">
-                <div className="flex items-center gap-2 px-3 py-2 mb-2">
+                <div className="flex items-center px-3 py-2 mb-2">
                   <Image
                     src="/logo.svg"
-                    alt="Azuuca"
-                    width={28}
-                    height={28}
-                    className="rounded-lg"
+                    alt="Logo"
+                    width={100}
+                    height={30}
                   />
-                  <span className="text-lg font-bold gradient-text">
-                    Azuuca
-                  </span>
                 </div>
                 {links.map((link, i) => (
                   <motion.div
@@ -165,6 +162,7 @@ export function Navbar() {
                   </motion.div>
                 ))}
                 <div className="border-t border-gray-100 pt-3 mt-3">
+                  <PWAInstallNavButton />
                   <div className="flex items-center gap-2 px-3 py-2">
                     <div className="w-7 h-7 rounded-full gradient-btn flex items-center justify-center">
                       <span className="text-white text-xs font-bold">
