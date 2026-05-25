@@ -40,7 +40,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const [clockInTime, setClockInTime] = useState("09:00");
   const [clockOutTime, setClockOutTime] = useState("18:00");
-  const [maxMonthlyEarnings, setMaxMonthlyEarnings] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [qrConfig, setQrConfig] = useState<QrConfigData | null>(null);
@@ -66,7 +65,6 @@ export default function SettingsPage() {
         const data = await res.json();
         setClockInTime(data.clockInTime);
         setClockOutTime(data.clockOutTime);
-        setMaxMonthlyEarnings(data.maxMonthlyEarnings != null ? String(data.maxMonthlyEarnings) : "");
       }
     } catch {
       // silently fail
@@ -90,7 +88,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clockInTime, clockOutTime, maxMonthlyEarnings: maxMonthlyEarnings || null }),
+        body: JSON.stringify({ clockInTime, clockOutTime }),
       });
       if (res.ok) {
         sileo.success({
@@ -319,45 +317,8 @@ export default function SettingsPage() {
               className="px-6 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-shadow flex items-center gap-2 disabled:opacity-50"
             >
               <Save size={16} />
-              {saving ? "Guardando..." : "Guardar Configuración"}
+              {saving ? "Guardando..." : "Guardar Horario"}
             </motion.button>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Max Monthly Earnings */}
-      <motion.div variants={item} className="glass rounded-2xl overflow-hidden">
-        <div className="p-5 border-b border-gray-100/50 flex items-center gap-2">
-          <DollarSign size={18} className="text-emerald-500" />
-          <h2 className="text-lg font-semibold text-gray-900">
-            Límite de Ganancia Mensual
-          </h2>
-        </div>
-        <div className="p-6 space-y-5">
-          <p className="text-sm text-gray-500">
-            Establece un monto máximo de ganancia mensual por empleado. Cuando las
-            ganancias calculadas por horas trabajadas alcancen este límite, no
-            seguirán aumentando. Deja vacío para no aplicar límite.
-          </p>
-          <div className="max-w-xs">
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">
-              Monto Máximo (MXN)
-            </label>
-            <div className="relative">
-              <DollarSign
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Sin límite"
-                value={maxMonthlyEarnings}
-                onChange={(e) => setMaxMonthlyEarnings(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 outline-none transition-all font-mono text-lg"
-              />
-            </div>
           </div>
         </div>
       </motion.div>
@@ -488,13 +449,9 @@ export default function SettingsPage() {
 
           {/* How it works */}
           <div className="p-4 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2">
-            <p className="text-sm font-medium text-blue-800">
-              ¿Cómo funciona?
-            </p>
+            <p className="text-sm font-medium text-blue-800">¿Cómo funciona?</p>
             <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
-              <li>
-                Imprime este código QR y colócalo en el lugar de trabajo
-              </li>
+              <li>Imprime este código QR y colócalo en el lugar de trabajo</li>
               <li>
                 Los empleados abren la app y escanean el QR con el botón de
                 escáner

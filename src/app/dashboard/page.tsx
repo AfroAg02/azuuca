@@ -928,7 +928,10 @@ function StatCard({
   );
 }
 
-function PunctualityBadge({ minutes, type }: { minutes: number; type: "arrival" | "departure" }) {
+function PunctualityBadge({ minutes, type }: { minutes: number | null; type: "arrival" | "departure" }) {
+  if (minutes === null || minutes === undefined || !Number.isFinite(minutes)) {
+    return <span className="text-gray-400">—</span>;
+  }
   const isGood = type === "arrival" ? minutes <= 0 : minutes >= 0;
   const absMin = Math.abs(minutes);
 

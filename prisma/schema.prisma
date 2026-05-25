@@ -8,14 +8,15 @@ generator client {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  name       String
-  password   String
-  role       String   @default("USER")
-  hourlyRate Float    @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  email               String   @unique
+  name                String
+  password            String
+  role                String   @default("USER")
+  hourlyRate          Float    @default(0)
+  maxMonthlyEarnings  Float?   // nullable — null means no cap
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   attendances   Attendance[]
   absences      Absence[]
@@ -68,7 +69,6 @@ model GlobalConfig {
   id        String   @id @default("global")
   clockInTime  String  @default("09:00") // HH:mm — expected entry time
   clockOutTime String  @default("18:00") // HH:mm — expected exit time
-  maxMonthlyEarnings Float? // nullable — null means no cap
   updatedAt DateTime @updatedAt
 }
 

@@ -11,6 +11,7 @@ import {
   X,
   Save,
   ScanLine,
+  CheckCircle2,
 } from "lucide-react";
 import { AttendanceButton } from "@/components/AttendanceButton";
 import { QrScanner } from "@/components/QrScanner";
@@ -208,35 +209,79 @@ export default function HomePage() {
         </p>
       </motion.div>
 
-      {/* Clock Button */}
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.3, type: "spring", bounce: 0.4 }}
-      >
-        <AttendanceButton
-          hasClockIn={hasClockIn}
-          hasClockOut={hasClockOut}
-          clockInTime={attendance?.clockIn || undefined}
-          clockOutTime={attendance?.clockOut || undefined}
-          onClock={handleClock}
-        />
-      </motion.div>
-
-      {/* QR Scanner Button */}
-      {qrEnabled && !(hasClockIn && hasClockOut) && (
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.35 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setShowQrScanner(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 transition-colors"
+      {/* Clock Button — only when QR is NOT required */}
+      {!qrEnabled && (
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.3, type: "spring", bounce: 0.4 }}
         >
-          <ScanLine size={18} />
-          Escanear QR
-        </motion.button>
+          <AttendanceButton
+            hasClockIn={hasClockIn}
+            hasClockOut={hasClockOut}
+            clockInTime={attendance?.clockIn || undefined}
+            clockOutTime={attendance?.clockOut || undefined}
+            onClock={handleClock}
+          />
+        </motion.div>
+      )}
+
+      {/* QR Scanner — primary action when QR is required */}
+      {qrEnabled && !(hasClockIn && hasClockOut) && (
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.3, type: "spring", bounce: 0.4 }}
+        >
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowQrScanner(true)}
+            className="relative w-52 h-52 sm:w-60 sm:h-60 rounded-full flex items-center justify-center"
+          >
+            <div
+              className={`absolute inset-0 rounded-full bg-gradient-to-br ${
+                !hasClockIn
+                  ? "from-blue-400 to-indigo-600 shadow-lg shadow-blue-500/30"
+                  : "from-rose-400 to-pink-600 shadow-lg shadow-rose-500/30"
+              }`}
+            />
+            <div className="relative text-center text-white">
+              <ScanLine size={56} className="mx-auto" strokeWidth={1.5} />
+              <p className="mt-3 text-sm font-semibold">
+                {!hasClockIn ? "Escanear QR - Entrada" : "Escanear QR - Salida"}
+              </p>
+            </div>
+          </motion.button>
+        </motion.div>
+      )}
+
+      {/* QR completed state */}
+      {qrEnabled && hasClockIn && hasClockOut && (
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.3, type: "spring", bounce: 0.4 }}
+          className="relative w-52 h-52 sm:w-60 sm:h-60 rounded-full flex items-center justify-center"
+        >
+          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 border-2 border-emerald-200/50" />
+          <div className="relative text-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", bounce: 0.5 }}
+            >
+              <CheckCircle2
+                size={56}
+                className="mx-auto text-emerald-500"
+                strokeWidth={1.5}
+              />
+            </motion.div>
+            <p className="text-emerald-700 mt-3 text-sm font-semibold">
+              Jornada completada
+            </p>
+          </div>
+        </motion.div>
       )}
 
       {/* Absence Button */}

@@ -8,13 +8,16 @@ export function timeToMinutes(time: string): number {
 
 /**
  * Calculate punctuality for a clock-in or clock-out time.
- * Returns minutes difference: negative = early, positive = late
+ * Returns minutes difference: negative = early, positive = late.
+ * Returns null if either time is missing or invalid.
  */
 export function calcPunctuality(
-  actual: string,
-  expected: string,
-): number {
-  return timeToMinutes(actual) - timeToMinutes(expected);
+  actual: string | null | undefined,
+  expected: string | null | undefined,
+): number | null {
+  if (!actual || !expected) return null;
+  const result = timeToMinutes(actual) - timeToMinutes(expected);
+  return Number.isFinite(result) ? result : null;
 }
 
 /** Get the global schedule config, creating defaults if needed */

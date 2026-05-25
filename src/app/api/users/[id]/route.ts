@@ -22,9 +22,9 @@ export async function PUT(
   }
 
   const body = await req.json();
-  const { name, email, password, hourlyRate, role } = body;
+  const { name, email, password, hourlyRate, role, maxMonthlyEarnings } = body;
 
-  const data: Record<string, string | number> = {};
+  const data: Record<string, string | number | null> = {};
   if (name) data.name = name;
   if (email) {
     // Verificar que el email no esté en uso por otro usuario
@@ -41,6 +41,12 @@ export async function PUT(
   if (hourlyRate !== undefined && session.user.role === "ADMIN") {
     data.hourlyRate = parseFloat(String(hourlyRate));
   }
+  if (maxMonthlyEarnings !== undefined && session.user.role === "ADMIN") {
+    data.maxMonthlyEarnings =
+      maxMonthlyEarnings === null || maxMonthlyEarnings === ""
+        ? null
+        : parseFloat(String(maxMonthlyEarnings));
+  }
   if (
     role &&
     session.user.role === "ADMIN" &&
@@ -52,7 +58,14 @@ export async function PUT(
   const user = await prisma.user.update({
     where: { id },
     data,
-    select: { id: true, email: true, name: true, role: true, hourlyRate: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      hourlyRate: true,
+      maxMonthlyEarnings: true,
+    },
   });
 
   return NextResponse.json(user);

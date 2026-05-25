@@ -31,7 +31,7 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json();
-  const { clockInTime, clockOutTime, maxMonthlyEarnings } = body;
+  const { clockInTime, clockOutTime } = body;
 
   const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
   if (!timeRegex.test(clockInTime) || !timeRegex.test(clockOutTime)) {
@@ -48,22 +48,10 @@ export async function PUT(request: Request) {
     );
   }
 
-  // maxMonthlyEarnings: null or undefined means no cap, otherwise must be positive
-  const parsedMax = maxMonthlyEarnings === null || maxMonthlyEarnings === "" || maxMonthlyEarnings === undefined
-    ? null
-    : parseFloat(maxMonthlyEarnings);
-
-  if (parsedMax !== null && (isNaN(parsedMax) || parsedMax < 0)) {
-    return NextResponse.json(
-      { error: "El monto máximo mensual debe ser un número positivo" },
-      { status: 400 },
-    );
-  }
-
   const config = await prisma.globalConfig.upsert({
     where: { id: "global" },
-    update: { clockInTime, clockOutTime, maxMonthlyEarnings: parsedMax },
-    create: { id: "global", clockInTime, clockOutTime, maxMonthlyEarnings: parsedMax },
+    update: { clockInTime, clockOutTime },
+    create: { id: "global", clockInTime, clockOutTime },
   });
 
   return NextResponse.json(config);

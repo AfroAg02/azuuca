@@ -237,7 +237,9 @@ export function UserDashboard() {
                 <DollarSign size={20} className="text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Ganancia del Mes</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Ganancia del Mes
+                </h3>
                 <p className="text-xs text-gray-500">
                   Tarifa: ${data.hourlyRate.toFixed(2)}/hora
                 </p>
@@ -245,25 +247,40 @@ export function UserDashboard() {
             </div>
             {data.maxMonthlyEarnings !== null && (
               <span className="text-xs text-gray-400">
-                Tope: ${data.maxMonthlyEarnings.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                Tope: $
+                {data.maxMonthlyEarnings.toLocaleString("es-MX", {
+                  minimumFractionDigits: 2,
+                })}
               </span>
             )}
           </div>
           <div className="flex items-end gap-2">
             <p className="text-4xl font-extrabold text-emerald-600">
-              ${data.totalEarnings.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+              $
+              {data.totalEarnings.toLocaleString("es-MX", {
+                minimumFractionDigits: 2,
+              })}
             </p>
-            {data.maxMonthlyEarnings !== null && data.totalEarnings >= data.maxMonthlyEarnings && (
-              <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-lg mb-1">
-                Tope alcanzado
-              </span>
-            )}
+            {data.maxMonthlyEarnings !== null &&
+              data.totalEarnings >= data.maxMonthlyEarnings && (
+                <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-lg mb-1">
+                  Tope alcanzado
+                </span>
+              )}
           </div>
           {data.maxMonthlyEarnings !== null && (
             <div className="mt-4">
               <div className="flex justify-between text-xs text-gray-500 mb-1">
                 <span>Progreso</span>
-                <span>{Math.min(100, Math.round((data.totalEarnings / data.maxMonthlyEarnings) * 100))}%</span>
+                <span>
+                  {Math.min(
+                    100,
+                    Math.round(
+                      (data.totalEarnings / data.maxMonthlyEarnings) * 100,
+                    ),
+                  )}
+                  %
+                </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
@@ -272,7 +289,9 @@ export function UserDashboard() {
                       ? "bg-amber-500"
                       : "bg-emerald-500"
                   }`}
-                  style={{ width: `${Math.min(100, (data.totalEarnings / data.maxMonthlyEarnings) * 100)}%` }}
+                  style={{
+                    width: `${Math.min(100, (data.totalEarnings / data.maxMonthlyEarnings) * 100)}%`,
+                  }}
                 />
               </div>
             </div>
@@ -388,7 +407,10 @@ export function UserDashboard() {
                       </td>
                       <td className="px-5 py-3.5 text-sm">
                         {day.lateArrivalMin !== null ? (
-                          <PunctualityBadge minutes={day.lateArrivalMin} type="arrival" />
+                          <PunctualityBadge
+                            minutes={day.lateArrivalMin}
+                            type="arrival"
+                          />
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
@@ -398,7 +420,10 @@ export function UserDashboard() {
                       </td>
                       <td className="px-5 py-3.5 text-sm">
                         {day.earlyDepartureMin !== null ? (
-                          <PunctualityBadge minutes={day.earlyDepartureMin} type="departure" />
+                          <PunctualityBadge
+                            minutes={day.earlyDepartureMin}
+                            type="departure"
+                          />
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
@@ -438,9 +463,18 @@ export function UserDashboard() {
   );
 }
 
-function PunctualityBadge({ minutes, type }: { minutes: number; type: "arrival" | "departure" }) {
+function PunctualityBadge({
+  minutes,
+  type,
+}: {
+  minutes: number | null;
+  type: "arrival" | "departure";
+}) {
   // For arrival: positive = late (bad), negative = early (good)
   // For departure: positive = stayed later (good), negative = left early (bad)
+  if (minutes === null || minutes === undefined || !Number.isFinite(minutes)) {
+    return <span className="text-gray-400">—</span>;
+  }
   const isGood = type === "arrival" ? minutes <= 0 : minutes >= 0;
   const absMin = Math.abs(minutes);
 
@@ -452,20 +486,19 @@ function PunctualityBadge({ minutes, type }: { minutes: number; type: "arrival" 
     );
   }
 
-  const label = type === "arrival"
-    ? minutes > 0
-      ? `+${absMin} min tarde`
-      : `${absMin} min temprano`
-    : minutes > 0
-      ? `+${absMin} min extra`
-      : `${absMin} min antes`;
+  const label =
+    type === "arrival"
+      ? minutes > 0
+        ? `+${absMin} min tarde`
+        : `${absMin} min temprano`
+      : minutes > 0
+        ? `+${absMin} min extra`
+        : `${absMin} min antes`;
 
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-        isGood
-          ? "bg-green-100 text-green-700"
-          : "bg-red-100 text-red-700"
+        isGood ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
       }`}
     >
       {label}

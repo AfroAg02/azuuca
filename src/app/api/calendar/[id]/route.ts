@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { broadcastNotification } from "@/lib/notifications";
 
 // PATCH: approve/reject a leave request (admin only)
 export async function PATCH(
@@ -58,6 +59,24 @@ export async function PATCH(
       creator: { select: { name: true } },
     },
   });
+
+  // Notify the user when their request is approved/rejected
+  if (status && updated.userId) {
+    const isApproved = status === "APPROVED";
+    broadcastNotification(
+      {
+        id: crypto.randomUUID(),
+        title: isApproved ? "Solicitud aprobada" : "Solicitud rechazada",
+        message: isApproved
+          ? `Tu solicitud del ${updated.startDate} al ${updated.endDate} fue aprobada`
+          : `Tu solicitud del ${updated.startDate} al ${updated.endDate} fue rechazada`,
+        type: isApproved ? "success" : "error",
+        timestamp: new Date().toISOString(),
+        read: false,
+      },
+      [updated.userId],
+    );
+  }
 
   return NextResponse.json(updated);
 }

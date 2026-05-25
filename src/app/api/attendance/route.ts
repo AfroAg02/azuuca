@@ -38,6 +38,20 @@ export async function POST(request: Request) {
     );
   }
 
+  // Bloquear registro manual si QR está habilitado (excepto admins)
+  if (session.user.role !== "ADMIN") {
+    const qrConfig = await prisma.qrConfig.findUnique({
+      where: { id: "default" },
+      select: { enabled: true },
+    });
+    if (qrConfig?.enabled) {
+      return NextResponse.json(
+        { error: "Debes escanear el código QR para registrar asistencia" },
+        { status: 403 },
+      );
+    }
+  }
+
   const timezone = getTimezoneFromRequest(request);
   const { date: today, time } = getNowInTimezone(timezone);
 

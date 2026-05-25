@@ -18,6 +18,7 @@ export async function GET() {
       name: true,
       role: true,
       hourlyRate: true,
+      maxMonthlyEarnings: true,
       createdAt: true,
     },
     orderBy: { name: "asc" },
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { email, name, password, role, hourlyRate } = body;
+  const { email, name, password, role, hourlyRate, maxMonthlyEarnings } = body;
 
   if (!email || !name || !password) {
     return NextResponse.json(
@@ -60,6 +61,12 @@ export async function POST(req: NextRequest) {
       password: hashedPassword,
       role: role || "USER",
       hourlyRate: hourlyRate ? parseFloat(hourlyRate) : 0,
+      maxMonthlyEarnings:
+        maxMonthlyEarnings !== undefined &&
+        maxMonthlyEarnings !== null &&
+        maxMonthlyEarnings !== ""
+          ? parseFloat(maxMonthlyEarnings)
+          : null,
     },
     select: {
       id: true,
@@ -67,6 +74,7 @@ export async function POST(req: NextRequest) {
       name: true,
       role: true,
       hourlyRate: true,
+      maxMonthlyEarnings: true,
       createdAt: true,
     },
   });

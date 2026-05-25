@@ -34,18 +34,14 @@ export async function GET(req: NextRequest) {
   const monthEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
   // Current attendance status
-  const [todayAttendance, scheduleConfig, user, globalConfig] = await Promise.all([
+  const [todayAttendance, scheduleConfig, user] = await Promise.all([
     prisma.attendance.findUnique({
       where: { userId_date: { userId, date: today } },
     }),
     getScheduleConfig(),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { hourlyRate: true },
-    }),
-    prisma.globalConfig.findUnique({
-      where: { id: "global" },
-      select: { maxMonthlyEarnings: true },
+      select: { hourlyRate: true, maxMonthlyEarnings: true },
     }),
   ]);
 
@@ -86,7 +82,10 @@ export async function GET(req: NextRequest) {
         const outSeconds = outH * 3600 + outM * 60 + (outS || 0);
         hoursWorked =
           Math.round(Math.max(0, (outSeconds - inSeconds) / 3600) * 100) / 100;
-        earlyDepartureMin = calcPunctuality(r.clockOut, scheduleConfig.clockOutTime);
+        earlyDepartureMin = calcPunctuality(
+          r.clockOut,
+          scheduleConfig.clockOutTime,
+        );
       } else if (r.date === today) {
         // Currently working — calculate partial hours
         const [nowH, nowM, nowS] = currentTime.split(":").map(Number);
@@ -111,8 +110,9 @@ export async function GET(req: NextRequest) {
   // Calculate earnings with cap
   const hourlyRate = user?.hourlyRate || 0;
   const rawEarnings = Math.round(totalHours * hourlyRate * 100) / 100;
-  const maxCap = globalConfig?.maxMonthlyEarnings ?? null;
-  const totalEarnings = maxCap !== null ? Math.min(rawEarnings, maxCap) : rawEarnings;
+  const maxCap = user?.maxMonthlyEarnings ?? null;
+  const totalEarnings =
+    maxCap !== null ? Math.min(rawEarnings, maxCap) : rawEarnings;
 
   // Current status
   let status: "not_started" | "working" | "completed" = "not_started";

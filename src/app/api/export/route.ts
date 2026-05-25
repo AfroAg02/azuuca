@@ -47,26 +47,28 @@ export async function GET(req: NextRequest) {
     where.date = { lte: to };
   }
 
-  const [attendances, globalConfig] = await Promise.all([
-    prisma.attendance.findMany({
-      where,
-      include: { user: { select: { name: true, hourlyRate: true } } },
-      orderBy: [{ date: "asc" }, { user: { name: "asc" } }],
-    }),
-    prisma.globalConfig.findUnique({
-      where: { id: "global" },
-      select: { maxMonthlyEarnings: true },
-    }),
-  ]);
-
-  const maxCap = globalConfig?.maxMonthlyEarnings ?? null;
+  const attendances = await prisma.attendance.findMany({
+    where,
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          hourlyRate: true,
+          maxMonthlyEarnings: true,
+        },
+      },
+    },
+    orderBy: [{ date: "asc" }, { user: { name: "asc" } }],
+  });
 
   // Track cumulative earnings per user per month for capping
   const userMonthEarnings = new Map<string, number>();
 
   const data = attendances.map((a) => {
     const dateObj = new Date(a.date + "T12:00:00");
-    const monthKey = `${a.userId}-${dateObj.getFullYear()}-${dateObj.getMonth()}`;
+    const monthKey = `${a.user.id}-${dateObj.getFullYear()}-${dateObj.getMonth()}`;
+    const maxCap = a.user.maxMonthlyEarnings ?? null;
 
     let hoursWorked = 0;
     let earnings = 0;

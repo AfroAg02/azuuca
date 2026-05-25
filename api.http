@@ -1,0 +1,54 @@
+### ============================================
+### REST Client para Azuuca
+### Extensión requerida: REST Client (humao.rest-client)
+### ============================================
+
+@baseUrl = http://localhost:3000
+
+### -----------------------------------------
+### 1. Obtener CSRF Token
+### (Copiar el csrfToken de la respuesta)
+### -----------------------------------------
+GET {{baseUrl}}/api/auth/csrf
+
+### -----------------------------------------
+### 2. Login como admin existente
+### (Usa las credenciales del seed: admin@azuuca.com / admin123)
+### Reemplazar {{csrfToken}} con el valor obtenido en paso 1
+### -----------------------------------------
+# @name login
+POST {{baseUrl}}/api/auth/callback/credentials
+Content-Type: application/x-www-form-urlencoded
+
+email=admin@azuuca.com&password=admin123&csrfToken=9dbd608d7d46c379d2143e66604e8b4fe64ad8270828c82b735815d5590fa8f4&json=true
+
+### -----------------------------------------
+### 3. Crear nuevo usuario ADMIN
+### Copiar la cookie "next-auth.session-token" del paso 2
+### y reemplazar {{sessionToken}} abajo
+### -----------------------------------------
+POST {{baseUrl}}/api/users
+Content-Type: application/json
+Cookie: next-auth.session-token={{sessionToken}}
+
+{
+  "email": "nuevoadmin@azuuca.com",
+  "name": "Nuevo Admin",
+  "password": "password123",
+  "role": "ADMIN",
+  "hourlyRate": 0,
+  "maxMonthlyEarnings": null
+}
+
+### -----------------------------------------
+### 4. Listar usuarios (verificar creación)
+### -----------------------------------------
+GET {{baseUrl}}/api/users
+Cookie: next-auth.session-token={{sessionToken}}
+
+### ============================================
+### ALTERNATIVA: Crear admin directamente con seed
+### Ejecutar en terminal:
+###   npx ts-node prisma/seed.ts
+### Esto crea: admin@azuuca.com / admin123
+### ============================================

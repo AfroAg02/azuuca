@@ -3,6 +3,14 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getTodayInTimezone, getTimezoneFromRequest } from "@/lib/timezone";
+import { broadcastNotification } from "@/lib/notifications";
+
+const TYPE_LABELS: Record<string, string> = {
+  VACATION: "Vacaciones",
+  MEDICAL: "Licencia Médica",
+  PAID_LEAVE: "Permiso Retribuido",
+  UNJUSTIFIED: "Ausencia Injustificada",
+};
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -165,6 +173,30 @@ export async function POST(req: NextRequest) {
       creator: { select: { name: true } },
     },
   });
+
+  // Notify admins when a user creates a PENDING absence
+  if (status === "PENDING") {
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { id: true },
+    });
+    const adminIds = admins.map((a) => a.id);
+    const typeLabel = TYPE_LABELS[type] || type;
+    const dateRange =
+      startDate === endDate ? startDate : `${startDate} al ${endDate}`;
+
+    broadcastNotification(
+      {
+        id: crypto.randomUUID(),
+        title: "Nueva solicitud de ausencia",
+        message: `${session.user.name} solicitó ${typeLabel} para el ${dateRange}`,
+        type: "warning",
+        timestamp: new Date().toISOString(),
+        read: false,
+      },
+      adminIds,
+    );
+  }
 
   return NextResponse.json(leaveRequest, { status: 201 });
 }
