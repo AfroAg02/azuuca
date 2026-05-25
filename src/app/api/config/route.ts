@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { broadcastNotification } from "@/lib/notifications";
 
 // GET: obtener configuración global (cualquier usuario autenticado)
 export async function GET() {
@@ -52,6 +53,16 @@ export async function PUT(request: Request) {
     where: { id: "global" },
     update: { clockInTime, clockOutTime },
     create: { id: "global", clockInTime, clockOutTime },
+  });
+
+  broadcastNotification({
+    id: crypto.randomUUID(),
+    title: "Horario actualizado",
+    message: `El horario fue actualizado: entrada ${clockInTime} — salida ${clockOutTime}`,
+    type: "info",
+    timestamp: new Date().toISOString(),
+    read: false,
+    data: { kind: "schedule_update", clockInTime, clockOutTime },
   });
 
   return NextResponse.json(config);

@@ -74,7 +74,9 @@ export function LeaveDetailModal({
   const leaveType = LEAVE_TYPES.find((t) => t.value === leaveRequest.type);
   const dayCount = getDayCount(leaveRequest.startDate, leaveRequest.endDate);
   const isHoliday = leaveRequest.type === "HOLIDAY";
-  const canDelete = isAdmin || leaveRequest.user?.id === currentUserId;
+  const isPast = leaveRequest.endDate < new Date().toISOString().slice(0, 10);
+  const canDelete =
+    isAdmin || (leaveRequest.user?.id === currentUserId && !isPast);
 
   async function handleDelete() {
     setDeleting(true);

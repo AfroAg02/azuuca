@@ -76,6 +76,13 @@ export default function UsersPage() {
   const [absenceUserId, setAbsenceUserId] = useState<string | null>(null);
   const [absenceModalOpen, setAbsenceModalOpen] = useState(false);
 
+  // Delete confirmation modal
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -138,22 +145,29 @@ export default function UsersPage() {
     }
   }
 
-  async function handleDelete(id: string, userName: string) {
-    if (!confirm(`¿Eliminar al usuario "${userName}"?`)) return;
-
-    const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      sileo.success({
-        title: "Usuario eliminado",
-        description: `"${userName}" fue eliminado`,
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/users/${deleteTarget.id}`, {
+        method: "DELETE",
       });
-      fetchUsers();
-    } else {
-      const data = await res.json();
-      sileo.error({
-        title: "Error al eliminar",
-        description: data.error || "No se pudo eliminar el usuario",
-      });
+      if (res.ok) {
+        sileo.success({
+          title: "Usuario eliminado",
+          description: `"${deleteTarget.name}" fue eliminado`,
+        });
+        fetchUsers();
+      } else {
+        const data = await res.json();
+        sileo.error({
+          title: "Error al eliminar",
+          description: data.error || "No se pudo eliminar el usuario",
+        });
+      }
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   }
 
@@ -632,7 +646,9 @@ export default function UsersPage() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handleDelete(user.id, user.name)}
+                          onClick={() =>
+                            setDeleteTarget({ id: user.id, name: user.name })
+                          }
                           className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                           title="Eliminar usuario"
                         >
@@ -851,6 +867,64 @@ export default function UsersPage() {
         onSubmit={handleCreateAbsence}
         isAdmin={true}
       />
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            onClick={() => !deleting && setDeleteTarget(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+              className="w-full max-w-sm glass-strong rounded-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col items-center text-center p-6 pt-8">
+                <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center mb-4">
+                  <AlertTriangle size={28} className="text-red-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                  Eliminar usuario
+                </h3>
+                <p className="text-sm text-gray-500 mb-1">
+                  ¿Estás seguro de que deseas eliminar a
+                </p>
+                <p className="text-sm font-semibold text-gray-800 mb-4">
+                  {deleteTarget.name}?
+                </p>
+                <p className="text-xs text-red-400 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                  Esta acción no se puede deshacer. Se eliminarán todos sus
+                  datos de asistencia y ausencias.
+                </p>
+              </div>
+              <div className="flex gap-3 px-6 pb-6">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleting}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl shadow-lg shadow-red-500/20 transition-all disabled:opacity-50"
+                >
+                  <Trash2 size={16} />
+                  {deleting ? "Eliminando..." : "Eliminar"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

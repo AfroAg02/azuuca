@@ -140,6 +140,23 @@ export async function POST(req: NextRequest) {
   const timezone = getTimezoneFromRequest(req);
   const today = getTodayInTimezone(timezone);
   const isFuture = startDate > today;
+
+  // Non-admin users must request future absences with at least 72 hours notice
+  if (!isAdmin && isFuture) {
+    const startMs = new Date(startDate + "T00:00:00").getTime();
+    const nowMs = Date.now();
+    const hoursUntilStart = (startMs - nowMs) / (1000 * 60 * 60);
+    if (hoursUntilStart < 72) {
+      return NextResponse.json(
+        {
+          error:
+            "Debes solicitar la ausencia con al menos 72 horas de antelación",
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   const status = !isAdmin && isFuture ? "PENDING" : "APPROVED";
 
   // Check overlap for that user
@@ -174,6 +191,26 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Notify the target user when an admin creates/assigns an absence
+  if (isAdmin && targetUserId !== session.user.id) {
+    const typeLabel = TYPE_LABELS[type] || type;
+    const dateRange =
+      startDate === endDate ? startDate : `${startDate} al ${endDate}`;
+
+    broadcastNotification(
+      {
+        id: crypto.randomUUID(),
+        title: "Ausencia planificada",
+        message: `Se te ha registrado ${typeLabel} para el ${dateRange}`,
+        type: "info",
+        timestamp: new Date().toISOString(),
+        read: false,
+        data: { kind: "absence_assigned", absenceId: leaveRequest.id },
+      },
+      [targetUserId],
+    );
+  }
+
   // Notify admins when a user creates a PENDING absence
   if (status === "PENDING") {
     const admins = await prisma.user.findMany({
@@ -193,6 +230,7 @@ export async function POST(req: NextRequest) {
         type: "warning",
         timestamp: new Date().toISOString(),
         read: false,
+        data: { kind: "absence_request" },
       },
       adminIds,
     );

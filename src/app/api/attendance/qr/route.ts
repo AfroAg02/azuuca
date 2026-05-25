@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { verifySync } from "otplib";
 import { getNowInTimezone, getTimezoneFromRequest } from "@/lib/timezone";
+import { calcPunctuality, getScheduleConfig } from "@/lib/schedule";
 
 // POST: Verificar código QR + TOTP y registrar asistencia
 export async function POST(request: Request) {
@@ -76,24 +77,30 @@ export async function POST(request: Request) {
     where: { userId_date: { userId: session.user.id, date: today } },
   });
 
+  const schedule = await getScheduleConfig();
+
   if (!attendance) {
     attendance = await prisma.attendance.create({
       data: { userId: session.user.id, date: today, clockIn: time },
     });
+    const diffMin = calcPunctuality(time, schedule.clockInTime);
     return NextResponse.json({
       ...attendance,
       action: "clockIn",
       message: "Entrada registrada correctamente",
+      diffMin,
     });
   } else if (!attendance.clockOut) {
     attendance = await prisma.attendance.update({
       where: { id: attendance.id },
       data: { clockOut: time },
     });
+    const diffMin = calcPunctuality(time, schedule.clockOutTime);
     return NextResponse.json({
       ...attendance,
       action: "clockOut",
       message: "Salida registrada correctamente",
+      diffMin,
     });
   }
 

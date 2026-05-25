@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { broadcastNotification } from "@/lib/notifications";
+import { getTodayInTimezone, getTimezoneFromRequest } from "@/lib/timezone";
 
 // PATCH: approve/reject a leave request (admin only)
 export async function PATCH(
@@ -73,6 +74,11 @@ export async function PATCH(
         type: isApproved ? "success" : "error",
         timestamp: new Date().toISOString(),
         read: false,
+        data: {
+          kind: "absence_update",
+          absenceId: updated.id,
+          newStatus: status,
+        },
       },
       [updated.userId],
     );
@@ -109,6 +115,18 @@ export async function DELETE(
       { error: "No tienes permiso para eliminar esta ausencia" },
       { status: 403 },
     );
+  }
+
+  // Non-admin users cannot delete absences once the end date has passed
+  if (!isAdmin) {
+    const timezone = getTimezoneFromRequest(_req);
+    const today = getTodayInTimezone(timezone);
+    if (existing.endDate < today) {
+      return NextResponse.json(
+        { error: "No puedes eliminar una ausencia que ya ha pasado" },
+        { status: 403 },
+      );
+    }
   }
 
   await prisma.leaveRequest.delete({ where: { id: params.id } });

@@ -16,6 +16,7 @@ import {
 import { AttendanceButton } from "@/components/AttendanceButton";
 import { QrScanner } from "@/components/QrScanner";
 import { sileo } from "sileo";
+import { showAttendanceToast } from "@/lib/attendance-messages";
 
 interface AttendanceData {
   id: string;
@@ -87,11 +88,9 @@ export default function HomePage() {
       if (res.ok) {
         const data = await res.json();
         setAttendance(data);
-        const isEntry = !attendance?.clockIn;
-        sileo.success({
-          title: isEntry ? "Entrada registrada" : "Salida registrada",
-          description: "Asistencia guardada correctamente",
-        });
+        const action = data.action ?? (!attendance?.clockIn ? "clockIn" : "clockOut");
+        const clockTime = action === "clockIn" ? data.clockIn : data.clockOut;
+        showAttendanceToast(action, data.diffMin, clockTime);
       } else {
         const err = await res.json().catch(() => null);
         sileo.error({

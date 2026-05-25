@@ -7,6 +7,7 @@ import {
   getTodayInTimezone,
   getTimezoneFromRequest,
 } from "@/lib/timezone";
+import { calcPunctuality, getScheduleConfig } from "@/lib/schedule";
 
 // GET: obtener asistencia de hoy del usuario actual
 export async function GET(request: Request) {
@@ -59,17 +60,23 @@ export async function POST(request: Request) {
     where: { userId_date: { userId: session.user.id, date: today } },
   });
 
+  const schedule = await getScheduleConfig();
+
   if (!attendance) {
     // Registrar entrada
     attendance = await prisma.attendance.create({
       data: { userId: session.user.id, date: today, clockIn: time },
     });
+    const diffMin = calcPunctuality(time, schedule.clockInTime);
+    return NextResponse.json({ ...attendance, action: "clockIn", diffMin });
   } else if (!attendance.clockOut) {
     // Registrar salida
     attendance = await prisma.attendance.update({
       where: { id: attendance.id },
       data: { clockOut: time },
     });
+    const diffMin = calcPunctuality(time, schedule.clockOutTime);
+    return NextResponse.json({ ...attendance, action: "clockOut", diffMin });
   }
 
   return NextResponse.json(attendance);

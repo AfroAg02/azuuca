@@ -11,9 +11,11 @@ import {
   ImagePlus,
   SwitchCamera,
 } from "lucide-react";
-import { Html5Qrcode } from "html5-qrcode";
+import Webcam from "react-webcam";
+import jsQR from "jsqr";
 import { generateSync } from "otplib";
 import { sileo } from "sileo";
+import { showAttendanceToast } from "@/lib/attendance-messages";
 
 interface Props {
   onSuccess: (action: string, message: string) => void;
@@ -26,29 +28,20 @@ export function QrScanner({ onSuccess, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState(false);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const webcamRef = useRef<Webcam>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const processedRef = useRef(false);
   const mountedRef = useRef(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  const stopScanner = useCallback(async () => {
-    if (scannerRef.current) {
-      try {
-        const state = scannerRef.current.getState();
-        if (state === 2) {
-          await scannerRef.current.stop();
-        }
-      } catch {
-        // ignore
-      }
-      try {
-        scannerRef.current.clear();
-      } catch {
-        // ignore
-      }
-      scannerRef.current = null;
+  const stopScanning = useCallback(() => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
     }
   }, []);
 
@@ -59,6 +52,7 @@ export function QrScanner({ onSuccess, onClose }: Props) {
 
       setVerifying(true);
       setError(null);
+      stopScanning();
 
       try {
         let payload: { siteId: string; secret: string; app?: string };
@@ -80,7 +74,6 @@ export function QrScanner({ onSuccess, onClose }: Props) {
 
         const totpCode = generateSync({ secret: payload.secret });
 
-        await stopScanner();
         setScanning(false);
 
         const res = await fetch("/api/attendance/qr", {
@@ -101,15 +94,8 @@ export function QrScanner({ onSuccess, onClose }: Props) {
 
         if (res.ok) {
           setSuccess(data.message);
-          sileo.success({
-            title:
-              data.action === "clockIn"
-                ? "Entrada registrada"
-                : data.action === "clockOut"
-                  ? "Salida registrada"
-                  : "Asistencia",
-            description: data.message,
-          });
+          const clockTime = data.action === "clockIn" ? data.clockIn : data.clockOut;
+          showAttendanceToast(data.action, data.diffMin, clockTime);
           setTimeout(() => {
             if (mountedRef.current) onSuccess(data.action, data.message);
           }, 1500);
@@ -126,82 +112,87 @@ export function QrScanner({ onSuccess, onClose }: Props) {
         if (mountedRef.current) setVerifying(false);
       }
     },
-    [verifying, stopScanner, timezone, onSuccess],
+    [verifying, stopScanning, timezone, onSuccess],
   );
 
-  const startScanner = useCallback(async () => {
-    setError(null);
-    setCameraError(false);
-    processedRef.current = false;
+  const scanFrame = useCallback(() => {
+    if (processedRef.current || !webcamRef.current || !canvasRef.current)
+      return;
 
-    try {
-      // Verify camera is available
-      const devices = await Html5Qrcode.getCameras();
-      if (!devices || devices.length === 0) {
-        setCameraError(true);
-        setError(
-          "No se detectó ninguna cámara. Usa la opción de subir una foto.",
-        );
-        return;
-      }
+    const video = webcamRef.current.video;
+    if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) return;
 
-      const scanner = new Html5Qrcode("qr-reader", {
-        verbose: false,
-      });
-      scannerRef.current = scanner;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
 
-      // Use back camera on mobile, any camera on desktop
-      const cameraConfig: Parameters<typeof scanner.start>[0] = {
-        facingMode: "environment",
-      };
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      await scanner.start(
-        cameraConfig,
-        {
-          fps: 10,
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const size = Math.min(viewfinderWidth, viewfinderHeight) * 0.75;
-            return { width: size, height: size };
-          },
-          aspectRatio: 1,
-          disableFlip: false,
-        },
-        (decodedText) => processQrData(decodedText),
-        () => {},
-      );
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: "dontInvert",
+    });
 
-      if (mountedRef.current) setScanning(true);
-    } catch (err: unknown) {
-      if (!mountedRef.current) return;
-      const message = err instanceof Error ? err.message : String(err);
-      setCameraError(true);
-
-      if (
-        message.includes("NotAllowedError") ||
-        message.includes("Permission")
-      ) {
-        setError(
-          "Permiso de cámara denegado. Permite el acceso en la configuración de tu navegador, o sube una foto del QR.",
-        );
-      } else if (
-        message.includes("NotFoundError") ||
-        message.includes("DevicesNotFoundError")
-      ) {
-        setError("No se encontró una cámara. Usa la opción de subir una foto.");
-      } else if (
-        message.includes("NotReadableError") ||
-        message.includes("TrackStartError")
-      ) {
-        setError(
-          "La cámara está en uso por otra app. Ciérrala e intenta de nuevo, o sube una foto.",
-        );
-      } else {
-        setError(
-          "No se pudo abrir la cámara. Usa la opción de subir una foto del QR.",
-        );
-      }
+    if (code?.data) {
+      processQrData(code.data);
     }
   }, [processQrData]);
+
+  const startScanning = useCallback(() => {
+    stopScanning();
+    scanIntervalRef.current = setInterval(scanFrame, 150);
+  }, [scanFrame, stopScanning]);
+
+  const handleUserMedia = useCallback(() => {
+    if (!mountedRef.current) return;
+    setCameraReady(true);
+    setScanning(true);
+    setCameraError(false);
+    setError(null);
+    startScanning();
+  }, [startScanning]);
+
+  const handleUserMediaError = useCallback((err: string | DOMException) => {
+    if (!mountedRef.current) return;
+    setCameraError(true);
+    setCameraReady(false);
+
+    const message = err instanceof DOMException ? err.message : String(err);
+
+    if (message.includes("NotAllowedError") || message.includes("Permission")) {
+      setError(
+        "Permiso de cámara denegado. Permite el acceso en la configuración de tu navegador, o sube una foto del QR.",
+      );
+    } else if (
+      message.includes("NotFoundError") ||
+      message.includes("DevicesNotFoundError")
+    ) {
+      setError("No se encontró una cámara. Usa la opción de subir una foto.");
+    } else if (
+      message.includes("NotReadableError") ||
+      message.includes("TrackStartError")
+    ) {
+      setError(
+        "La cámara está en uso por otra app. Ciérrala e intenta de nuevo, o sube una foto.",
+      );
+    } else {
+      setError(
+        "No se pudo abrir la cámara. Usa la opción de subir una foto del QR.",
+      );
+    }
+  }, []);
+
+  const [retryKey, setRetryKey] = useState(0);
+
+  function handleRetry() {
+    setCameraError(false);
+    setCameraReady(false);
+    setError(null);
+    processedRef.current = false;
+    setRetryKey((k) => k + 1);
+  }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -211,43 +202,57 @@ export function QrScanner({ onSuccess, onClose }: Props) {
     processedRef.current = false;
 
     try {
-      // Stop camera if running
-      await stopScanner();
+      stopScanning();
       setScanning(false);
 
-      const scanner = new Html5Qrcode("qr-file-reader");
-      const result = await scanner.scanFile(file, /* showImage */ false);
-      scanner.clear();
-      await processQrData(result);
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = url;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("No canvas context");
+
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+      if (code?.data) {
+        await processQrData(code.data);
+      } else {
+        setError(
+          "No se pudo leer un código QR de la imagen. Asegúrate de que la foto sea clara y contenga el QR completo.",
+        );
+      }
     } catch {
       setError(
         "No se pudo leer un código QR de la imagen. Asegúrate de que la foto sea clara y contenga el QR completo.",
       );
     }
 
-    // Reset file input so the same file can be selected again
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  // Auto-start camera on mount
   useEffect(() => {
     mountedRef.current = true;
-    // Small delay to ensure the DOM element is rendered
-    const timer = setTimeout(() => {
-      if (mountedRef.current) startScanner();
-    }, 300);
-
     return () => {
       mountedRef.current = false;
-      clearTimeout(timer);
-      stopScanner();
+      stopScanning();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleClose() {
     mountedRef.current = false;
-    stopScanner();
+    stopScanning();
     onClose();
   }
 
@@ -284,28 +289,61 @@ export function QrScanner({ onSuccess, onClose }: Props) {
 
         {/* Scanner Area */}
         <div className="p-4">
+          {/* Hidden canvas for QR decoding */}
+          <canvas ref={canvasRef} className="hidden" />
+
           {/* Camera viewfinder */}
-          <div
-            id="qr-reader"
-            className={`rounded-xl overflow-hidden ${scanning ? "" : "hidden"}`}
-          />
-
-          {/* Hidden element for file scanning */}
-          <div id="qr-file-reader" className="hidden" />
-
-          {/* Loading camera */}
-          {!scanning && !success && !verifying && !cameraError && (
-            <div className="flex flex-col items-center py-8 space-y-3">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{
-                  duration: 1,
-                  repeat: Infinity,
-                  ease: "linear",
+          {!success && !verifying && !cameraError && (
+            <div className="relative rounded-xl overflow-hidden bg-black aspect-square">
+              <Webcam
+                key={retryKey}
+                ref={webcamRef}
+                audio={false}
+                screenshotFormat="image/jpeg"
+                videoConstraints={{
+                  facingMode: "environment",
+                  width: { ideal: 640 },
+                  height: { ideal: 640 },
                 }}
-                className="w-10 h-10 border-3 border-indigo-200 border-t-indigo-600 rounded-full"
+                onUserMedia={handleUserMedia}
+                onUserMediaError={handleUserMediaError}
+                className="w-full h-full object-cover"
               />
-              <p className="text-sm text-gray-500">Abriendo cámara...</p>
+              {/* Scan overlay */}
+              {cameraReady && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-3/4 h-3/4 border-2 border-white/40 rounded-lg relative">
+                    <div className="absolute top-0 left-0 w-6 h-6 border-t-3 border-l-3 border-indigo-400 rounded-tl-md" />
+                    <div className="absolute top-0 right-0 w-6 h-6 border-t-3 border-r-3 border-indigo-400 rounded-tr-md" />
+                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-3 border-l-3 border-indigo-400 rounded-bl-md" />
+                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-3 border-r-3 border-indigo-400 rounded-br-md" />
+                    <motion.div
+                      animate={{ y: ["0%", "100%", "0%"] }}
+                      transition={{
+                        duration: 2.5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                      className="absolute left-0 right-0 h-0.5 bg-indigo-400/60"
+                    />
+                  </div>
+                </div>
+              )}
+              {/* Loading overlay while camera initializes */}
+              {!cameraReady && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 space-y-3">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    className="w-10 h-10 border-3 border-indigo-200 border-t-indigo-600 rounded-full"
+                  />
+                  <p className="text-sm text-gray-300">Abriendo cámara...</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -319,11 +357,7 @@ export function QrScanner({ onSuccess, onClose }: Props) {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setCameraError(false);
-                    setError(null);
-                    startScanner();
-                  }}
+                  onClick={handleRetry}
                   className="w-full px-5 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
                 >
                   <SwitchCamera size={18} />

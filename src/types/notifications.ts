@@ -9,6 +9,8 @@ export interface AppNotification {
   read: boolean;
   /** Optional: target specific user IDs. Empty = broadcast */
   targetUserIds?: string[];
+  /** Optional structured payload for real-time state updates */
+  data?: Record<string, unknown>;
 }
 
 export interface SendNotificationPayload {

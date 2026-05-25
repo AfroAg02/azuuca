@@ -16,6 +16,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useNotifications } from "./SignalRProvider";
+import { useRouter } from "next/navigation";
 import type { AppNotification, NotificationType } from "@/types/notifications";
 
 const PREVIEW_COUNT = 4;
@@ -56,10 +57,12 @@ function timeAgo(dateStr: string): string {
 function NotificationItem({
   notif,
   onRead,
+  onNavigate,
   compact,
 }: {
   notif: AppNotification;
   onRead: (id: string) => void;
+  onNavigate?: (notif: AppNotification) => void;
   compact?: boolean;
 }) {
   return (
@@ -67,7 +70,10 @@ function NotificationItem({
       className={`group px-4 ${compact ? "py-2.5" : "py-3"} cursor-pointer transition-colors hover:bg-gray-50 ${
         !notif.read ? "bg-blue-50/40" : ""
       }`}
-      onClick={() => onRead(notif.id)}
+      onClick={() => {
+        onRead(notif.id);
+        onNavigate?.(notif);
+      }}
     >
       <div className="flex items-start gap-3">
         <div
@@ -117,6 +123,7 @@ function NotificationsPanel({
   markAsRead,
   markAllAsRead,
   clearAll,
+  onNavigate,
 }: {
   open: boolean;
   onClose: () => void;
@@ -125,6 +132,7 @@ function NotificationsPanel({
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearAll: () => void;
+  onNavigate: (notif: AppNotification) => void;
 }) {
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const filtered =
@@ -228,6 +236,7 @@ function NotificationsPanel({
                       key={notif.id}
                       notif={notif}
                       onRead={markAsRead}
+                      onNavigate={onNavigate}
                     />
                   ))}
                 </div>
@@ -247,9 +256,24 @@ export function NotificationCenter() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const previewNotifications = notifications.slice(0, PREVIEW_COUNT);
   const hasMore = notifications.length > PREVIEW_COUNT;
+
+  function handleNotificationNavigate(notif: AppNotification) {
+    const kind = notif.data?.kind as string | undefined;
+    if (kind === "absence_request") {
+      setDropdownOpen(false);
+      setPanelOpen(false);
+      router.push("/absences#solicitudes");
+      setTimeout(() => {
+        document
+          .getElementById("solicitudes")
+          ?.scrollIntoView({ behavior: "smooth" });
+      }, 300);
+    }
+  }
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -335,6 +359,7 @@ export function NotificationCenter() {
                         key={notif.id}
                         notif={notif}
                         onRead={markAsRead}
+                        onNavigate={handleNotificationNavigate}
                         compact
                       />
                     ))}
@@ -369,6 +394,7 @@ export function NotificationCenter() {
         markAsRead={markAsRead}
         markAllAsRead={markAllAsRead}
         clearAll={clearAll}
+        onNavigate={handleNotificationNavigate}
       />
     </>
   );

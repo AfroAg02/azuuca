@@ -20,14 +20,23 @@ export async function GET(req: NextRequest) {
 
   const searchParams = req.nextUrl.searchParams;
   const userId = searchParams.get("userId");
+  const all = searchParams.get("all");
 
   const isAdmin = session.user.role === "ADMIN";
 
+  const whereClause: Record<string, unknown> = {
+    type: { in: JUSTIFICATION_TYPES },
+  };
+
+  if (isAdmin && all === "true") {
+    // Admin requesting all absences — no userId filter
+    if (userId) whereClause.userId = userId;
+  } else {
+    whereClause.userId = isAdmin && userId ? userId : session.user.id;
+  }
+
   const absences = await prisma.leaveRequest.findMany({
-    where: {
-      type: { in: JUSTIFICATION_TYPES },
-      userId: isAdmin && userId ? userId : session.user.id,
-    },
+    where: whereClause,
     include: { user: { select: { name: true } } },
     orderBy: { startDate: "desc" },
   });
@@ -69,6 +78,23 @@ export async function POST(req: NextRequest) {
 
   // Determine status: users planning future absences → PENDING
   const isFuture = date > today;
+
+  // Non-admin users must request future absences with at least 72 hours notice
+  if (!isAdmin && isFuture) {
+    const startMs = new Date(date + "T00:00:00").getTime();
+    const nowMs = Date.now();
+    const hoursUntilStart = (startMs - nowMs) / (1000 * 60 * 60);
+    if (hoursUntilStart < 72) {
+      return NextResponse.json(
+        {
+          error:
+            "Debes solicitar la ausencia con al menos 72 horas de antelación",
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   const status = !isAdmin && isFuture ? "PENDING" : "APPROVED";
 
   // Check for overlap
