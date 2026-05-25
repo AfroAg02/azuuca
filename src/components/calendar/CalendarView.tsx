@@ -49,6 +49,7 @@ interface LeaveRequestData {
   endDate: string;
   type: string;
   reason: string;
+  status: string;
   hours: number | null;
   createdAt: string;
   user: { id: string; name: string; email: string } | null;
@@ -162,7 +163,13 @@ export function CalendarView() {
       if (lr.type === "HOLIDAY") {
         title = `🏖 ${lr.reason || "Feriado"} (${lr.hours}h)`;
       } else {
-        title = `${lr.user?.name ?? "—"} — ${typeLabel}`;
+        const statusIcon =
+          lr.status === "PENDING"
+            ? "⏳ "
+            : lr.status === "REJECTED"
+              ? "❌ "
+              : "";
+        title = `${statusIcon}${lr.user?.name ?? "—"} — ${typeLabel}`;
       }
 
       return {
@@ -179,17 +186,20 @@ export function CalendarView() {
   // Event style
   const eventStyleGetter = useCallback((event: CalendarEvent) => {
     const colors = TYPE_COLORS[event.resource.type] ?? TYPE_COLORS.UNJUSTIFIED;
+    const isPending = event.resource.status === "PENDING";
+    const isRejected = event.resource.status === "REJECTED";
 
     return {
       style: {
-        backgroundColor: colors.bg,
-        borderLeft: `3px solid ${colors.border}`,
+        backgroundColor: isRejected ? "#9ca3af" : colors.bg,
+        borderLeft: `3px ${isPending ? "dashed" : "solid"} ${isRejected ? "#6b7280" : colors.border}`,
         borderRadius: "6px",
         color: "#fff",
         fontSize: "12px",
         padding: "2px 6px",
         border: "none",
         boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+        opacity: isPending ? 0.7 : isRejected ? 0.5 : 1,
       },
     };
   }, []);
@@ -237,10 +247,19 @@ export function CalendarView() {
       throw new Error(err.error || "Error al registrar la ausencia");
     }
 
-    sileo.success({
-      title: "Ausencia registrada",
-      description: "La ausencia fue guardada correctamente",
-    });
+    const result = await res.json();
+    if (result.status === "PENDING") {
+      sileo.info({
+        title: "Solicitud enviada",
+        description:
+          "Tu ausencia fue enviada y necesita aprobación de un administrador",
+      });
+    } else {
+      sileo.success({
+        title: "Ausencia registrada",
+        description: "La ausencia fue guardada correctamente",
+      });
+    }
     await fetchLeaveRequests(currentDate);
   }
 
@@ -260,6 +279,34 @@ export function CalendarView() {
     sileo.success({
       title: "Ausencia eliminada",
       description: "El registro fue eliminado correctamente",
+    });
+    await fetchLeaveRequests(currentDate);
+  }
+
+  // Change leave status (approve/reject)
+  async function handleStatusChange(id: string, status: string) {
+    const res = await fetch(`/api/calendar/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      sileo.error({
+        title: "Error al actualizar",
+        description: err.error || "No se pudo cambiar el estado",
+      });
+      throw new Error(err.error || "Error al cambiar el estado");
+    }
+
+    sileo.success({
+      title:
+        status === "APPROVED" ? "Solicitud aprobada" : "Solicitud rechazada",
+      description:
+        status === "APPROVED"
+          ? "La ausencia fue aprobada correctamente"
+          : "La solicitud fue rechazada",
     });
     await fetchLeaveRequests(currentDate);
   }
@@ -424,7 +471,7 @@ export function CalendarView() {
         isAdmin={isAdmin}
         currentUserId={currentUserId}
         onDelete={handleDelete}
-        onUpdate={handleUpdate}
+        onStatusChange={handleStatusChange}
       />
     </div>
   );

@@ -67,6 +67,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Determine status: users planning future absences → PENDING
+  const isFuture = date > today;
+  const status = !isAdmin && isFuture ? "PENDING" : "APPROVED";
+
   // Check for overlap
   const overlap = await prisma.leaveRequest.findFirst({
     where: {
@@ -91,6 +95,7 @@ export async function POST(req: NextRequest) {
       endDate: date,
       type,
       reason: reason || "",
+      status,
     },
   });
 

@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  DollarSign,
 } from "lucide-react";
 
 interface DayRecord {
@@ -19,6 +20,8 @@ interface DayRecord {
   clockIn: string | null;
   clockOut: string | null;
   hoursWorked: number | null;
+  lateArrivalMin: number | null;
+  earlyDepartureMin: number | null;
 }
 
 interface UserDashboardData {
@@ -26,9 +29,13 @@ interface UserDashboardData {
   status: "not_started" | "working" | "completed";
   monthAbsences: number;
   totalHours: number;
+  totalEarnings: number;
+  maxMonthlyEarnings: number | null;
+  hourlyRate: number;
   days: DayRecord[];
   month: number;
   year: number;
+  schedule: { clockInTime: string; clockOutTime: string };
 }
 
 const MONTHS = [
@@ -218,6 +225,61 @@ export function UserDashboard() {
         </motion.div>
       </motion.div>
 
+      {/* Earnings Card */}
+      <motion.div variants={item}>
+        <motion.div
+          whileHover={{ scale: 1.01, y: -2 }}
+          className="glass rounded-2xl p-6 shadow-xl relative overflow-hidden border border-emerald-100"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <DollarSign size={20} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Ganancia del Mes</h3>
+                <p className="text-xs text-gray-500">
+                  Tarifa: ${data.hourlyRate.toFixed(2)}/hora
+                </p>
+              </div>
+            </div>
+            {data.maxMonthlyEarnings !== null && (
+              <span className="text-xs text-gray-400">
+                Tope: ${data.maxMonthlyEarnings.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+              </span>
+            )}
+          </div>
+          <div className="flex items-end gap-2">
+            <p className="text-4xl font-extrabold text-emerald-600">
+              ${data.totalEarnings.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+            </p>
+            {data.maxMonthlyEarnings !== null && data.totalEarnings >= data.maxMonthlyEarnings && (
+              <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-lg mb-1">
+                Tope alcanzado
+              </span>
+            )}
+          </div>
+          {data.maxMonthlyEarnings !== null && (
+            <div className="mt-4">
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Progreso</span>
+                <span>{Math.min(100, Math.round((data.totalEarnings / data.maxMonthlyEarnings) * 100))}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all duration-500 ${
+                    data.totalEarnings >= data.maxMonthlyEarnings
+                      ? "bg-amber-500"
+                      : "bg-emerald-500"
+                  }`}
+                  style={{ width: `${Math.min(100, (data.totalEarnings / data.maxMonthlyEarnings) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </motion.div>
+
       {/* Hours Summary Table */}
       <motion.div variants={item} className="glass rounded-2xl overflow-hidden">
         <div className="p-5 border-b border-gray-100/50 flex items-center justify-between">
@@ -233,7 +295,13 @@ export function UserDashboard() {
               </span>
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            {data.schedule && (
+              <span className="hidden sm:inline-flex items-center gap-1 text-xs text-gray-400">
+                <Clock size={12} />
+                {data.schedule.clockInTime} — {data.schedule.clockOutTime}
+              </span>
+            )}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -281,7 +349,13 @@ export function UserDashboard() {
                     Entrada
                   </th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Puntualidad Entrada
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Salida
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Puntualidad Salida
                   </th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Horas
@@ -312,8 +386,22 @@ export function UserDashboard() {
                       <td className="px-5 py-3.5 text-sm font-mono text-gray-600">
                         {day.clockIn ? day.clockIn.substring(0, 5) : "—"}
                       </td>
+                      <td className="px-5 py-3.5 text-sm">
+                        {day.lateArrivalMin !== null ? (
+                          <PunctualityBadge minutes={day.lateArrivalMin} type="arrival" />
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-5 py-3.5 text-sm font-mono text-gray-600">
                         {day.clockOut ? day.clockOut.substring(0, 5) : "—"}
+                      </td>
+                      <td className="px-5 py-3.5 text-sm">
+                        {day.earlyDepartureMin !== null ? (
+                          <PunctualityBadge minutes={day.earlyDepartureMin} type="departure" />
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3.5 text-sm">
                         {day.hoursWorked !== null ? (
@@ -331,7 +419,7 @@ export function UserDashboard() {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50/80 font-semibold">
-                  <td colSpan={3} className="px-5 py-3.5 text-sm text-gray-700">
+                  <td colSpan={5} className="px-5 py-3.5 text-sm text-gray-700">
                     Total del mes
                   </td>
                   <td className="px-5 py-3.5 text-sm">
@@ -347,5 +435,40 @@ export function UserDashboard() {
         )}
       </motion.div>
     </motion.div>
+  );
+}
+
+function PunctualityBadge({ minutes, type }: { minutes: number; type: "arrival" | "departure" }) {
+  // For arrival: positive = late (bad), negative = early (good)
+  // For departure: positive = stayed later (good), negative = left early (bad)
+  const isGood = type === "arrival" ? minutes <= 0 : minutes >= 0;
+  const absMin = Math.abs(minutes);
+
+  if (minutes === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+        Puntual
+      </span>
+    );
+  }
+
+  const label = type === "arrival"
+    ? minutes > 0
+      ? `+${absMin} min tarde`
+      : `${absMin} min temprano`
+    : minutes > 0
+      ? `+${absMin} min extra`
+      : `${absMin} min antes`;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+        isGood
+          ? "bg-green-100 text-green-700"
+          : "bg-red-100 text-red-700"
+      }`}
+    >
+      {label}
+    </span>
   );
 }

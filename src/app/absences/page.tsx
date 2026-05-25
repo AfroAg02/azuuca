@@ -13,6 +13,8 @@ import {
   HelpCircle,
   CheckCircle2,
   Inbox,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { sileo } from "sileo";
 
@@ -22,6 +24,7 @@ interface Absence {
   endDate: string;
   reason: string;
   type: string;
+  status: string;
   user?: { name: string } | null;
 }
 
@@ -115,11 +118,21 @@ export default function AbsencesPage() {
       });
 
       if (res.ok) {
-        setMessage("Ausencia registrada correctamente");
-        sileo.success({
-          title: "Ausencia registrada",
-          description: "Tu ausencia fue guardada correctamente",
-        });
+        const result = await res.json();
+        if (result.status === "PENDING") {
+          setMessage("Solicitud enviada — pendiente de aprobación");
+          sileo.info({
+            title: "Solicitud enviada",
+            description:
+              "Tu ausencia fue enviada como solicitud y necesita aprobación de un administrador",
+          });
+        } else {
+          setMessage("Ausencia registrada correctamente");
+          sileo.success({
+            title: "Ausencia registrada",
+            description: "Tu ausencia fue guardada correctamente",
+          });
+        }
         setDate("");
         setReason("");
         fetchAbsences();
@@ -318,7 +331,7 @@ export default function AbsencesPage() {
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <span className="font-medium text-sm text-gray-900">
                         {absence.startDate}
                       </span>
@@ -335,6 +348,24 @@ export default function AbsencesPage() {
                       >
                         {absenceType?.label || absence.type}
                       </span>
+                      {absence.status === "PENDING" && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
+                          <Clock size={10} />
+                          Pendiente
+                        </span>
+                      )}
+                      {absence.status === "REJECTED" && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 flex items-center gap-1">
+                          <XCircle size={10} />
+                          Rechazada
+                        </span>
+                      )}
+                      {absence.status === "APPROVED" && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                          <CheckCircle2 size={10} />
+                          Aprobada
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-gray-500 truncate">
                       {absence.reason || "Sin razón especificada"}

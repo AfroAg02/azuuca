@@ -33,6 +33,8 @@ interface AttendanceRecord {
   clockOut: string | null;
   hoursWorked: number | null;
   earnings: number | null;
+  lateArrivalMin: number | null;
+  earlyDepartureMin: number | null;
   user: { name: string; hourlyRate: number };
 }
 
@@ -60,7 +62,7 @@ interface SummaryUser {
   id: string;
   name: string;
   hourlyRate: number;
-  days: Record<string, { hoursWorked: number; earnings: number }>;
+  days: Record<string, { hoursWorked: number; earnings: number; lateArrivalMin: number | null; earlyDepartureMin: number | null }>;
   totalHours: number;
   totalEarnings: number;
 }
@@ -68,6 +70,7 @@ interface SummaryUser {
 interface SummaryData {
   dates: string[];
   users: SummaryUser[];
+  schedule: { clockInTime: string; clockOutTime: string };
 }
 
 const container = {
@@ -121,6 +124,7 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [schedule, setSchedule] = useState<{ clockInTime: string; clockOutTime: string } | null>(null);
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useEffect(() => {
@@ -157,6 +161,7 @@ export default function DashboardPage() {
         setRecords(data.todayRecords);
         setPlannedLeaves(data.plannedLeaves || []);
         setHoliday(data.holiday || null);
+        setSchedule(data.schedule || null);
       } else {
         sileo.error({
           title: "Error al cargar",
@@ -398,6 +403,12 @@ export default function DashboardPage() {
             <h2 className="text-lg font-semibold text-gray-900">
               {isToday(selectedDate) ? "Asistencia de Hoy" : "Asistencia"}
             </h2>
+            {schedule && (
+              <span className="hidden sm:inline-flex items-center gap-1 text-xs text-gray-400 ml-2">
+                <Clock size={12} />
+                {schedule.clockInTime} — {schedule.clockOutTime}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <motion.button
@@ -450,7 +461,13 @@ export default function DashboardPage() {
                     Entrada
                   </th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Punt. Entrada
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Salida
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Punt. Salida
                   </th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Horas
@@ -490,8 +507,22 @@ export default function DashboardPage() {
                     <td className="px-5 py-4 text-sm font-mono text-gray-600">
                       {r.clockIn || "—"}
                     </td>
+                    <td className="px-5 py-4 text-sm">
+                      {r.lateArrivalMin !== null ? (
+                        <PunctualityBadge minutes={r.lateArrivalMin} type="arrival" />
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
                     <td className="px-5 py-4 text-sm font-mono text-gray-600">
                       {r.clockOut || "—"}
+                    </td>
+                    <td className="px-5 py-4 text-sm">
+                      {r.earlyDepartureMin !== null ? (
+                        <PunctualityBadge minutes={r.earlyDepartureMin} type="departure" />
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-sm">
                       {r.hoursWorked !== null ? (
@@ -894,5 +925,38 @@ function StatCard({
         <p className="text-4xl font-extrabold">{value}</p>
       </div>
     </motion.div>
+  );
+}
+
+function PunctualityBadge({ minutes, type }: { minutes: number; type: "arrival" | "departure" }) {
+  const isGood = type === "arrival" ? minutes <= 0 : minutes >= 0;
+  const absMin = Math.abs(minutes);
+
+  if (minutes === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+        Puntual
+      </span>
+    );
+  }
+
+  const label = type === "arrival"
+    ? minutes > 0
+      ? `+${absMin} min tarde`
+      : `${absMin} min temprano`
+    : minutes > 0
+      ? `+${absMin} min extra`
+      : `${absMin} min antes`;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+        isGood
+          ? "bg-green-100 text-green-700"
+          : "bg-red-100 text-red-700"
+      }`}
+    >
+      {label}
+    </span>
   );
 }

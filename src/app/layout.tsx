@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { AuthProvider } from "@/components/AuthProvider";
 import { PWARegister } from "@/components/PWARegister";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
+import { NotificationProvider } from "@/components/notifications/SignalRProvider";
 import { Toaster } from "sileo";
 
 export const metadata: Metadata = {
@@ -36,17 +37,19 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen font-['Inter',sans-serif] antialiased">
         <AuthProvider>
-          <Navbar />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {children}
-          </main>
-          <footer className="text-center text-sm text-gray-400 py-4 border-t border-gray-100 mt-8">
-            © {new Date().getFullYear()} AfroAg02. Todos los derechos
-            reservados.
-          </footer>
-          <Toaster position="bottom-right" />
-          <PWARegister />
-          <PWAInstallButton />
+          <NotificationProvider>
+            <Navbar />
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+              {children}
+            </main>
+            <footer className="text-center text-sm text-gray-400 py-4 border-t border-gray-100 mt-8">
+              © {new Date().getFullYear()} AfroAg02. Todos los derechos
+              reservados.
+            </footer>
+            <Toaster position="bottom-right" />
+            <PWARegister />
+            <PWAInstallButton />
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>

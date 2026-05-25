@@ -47,14 +47,26 @@ export async function GET(req: NextRequest) {
     where.date = { lte: to };
   }
 
-  const attendances = await prisma.attendance.findMany({
-    where,
-    include: { user: { select: { name: true, hourlyRate: true } } },
-    orderBy: [{ date: "asc" }, { user: { name: "asc" } }],
-  });
+  const [attendances, globalConfig] = await Promise.all([
+    prisma.attendance.findMany({
+      where,
+      include: { user: { select: { name: true, hourlyRate: true } } },
+      orderBy: [{ date: "asc" }, { user: { name: "asc" } }],
+    }),
+    prisma.globalConfig.findUnique({
+      where: { id: "global" },
+      select: { maxMonthlyEarnings: true },
+    }),
+  ]);
+
+  const maxCap = globalConfig?.maxMonthlyEarnings ?? null;
+
+  // Track cumulative earnings per user per month for capping
+  const userMonthEarnings = new Map<string, number>();
 
   const data = attendances.map((a) => {
     const dateObj = new Date(a.date + "T12:00:00");
+    const monthKey = `${a.userId}-${dateObj.getFullYear()}-${dateObj.getMonth()}`;
 
     let hoursWorked = 0;
     let earnings = 0;
@@ -65,7 +77,19 @@ export async function GET(req: NextRequest) {
       const outSeconds = outH * 3600 + outM * 60 + (outS || 0);
       hoursWorked = Math.max(0, (outSeconds - inSeconds) / 3600);
       hoursWorked = Math.round(hoursWorked * 100) / 100;
-      earnings = Math.round(hoursWorked * a.user.hourlyRate * 100) / 100;
+
+      const rawDayEarnings =
+        Math.round(hoursWorked * a.user.hourlyRate * 100) / 100;
+      const prevCumulative = userMonthEarnings.get(monthKey) || 0;
+
+      if (maxCap !== null) {
+        const remaining = Math.max(0, maxCap - prevCumulative);
+        earnings = Math.min(rawDayEarnings, remaining);
+      } else {
+        earnings = rawDayEarnings;
+      }
+
+      userMonthEarnings.set(monthKey, prevCumulative + rawDayEarnings);
     }
 
     return {

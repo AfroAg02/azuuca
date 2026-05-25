@@ -16,9 +16,10 @@ import {
   LogOut,
   Menu,
   X,
-  Download,
+  Settings,
 } from "lucide-react";
 import { PWAInstallNavButton } from "./PWAInstallButton";
+import { NotificationCenter } from "./notifications/NotificationCenter";
 
 const iconMap: Record<string, React.ReactNode> = {
   "/": <Home size={18} />,
@@ -27,7 +28,7 @@ const iconMap: Record<string, React.ReactNode> = {
   "/calendar": <CalendarDays size={18} />,
   "/absences": <CalendarOff size={18} />,
   "/profile": <UserCircle size={18} />,
-  "/install": <Download size={18} />,
+  "/settings": <Settings size={18} />,
 };
 
 export function Navbar() {
@@ -41,12 +42,16 @@ export function Navbar() {
 
   const links = [
     { href: "/", label: "Inicio" },
-    { href: "/dashboard", label: "Dashboard" },
-    ...(isAdmin ? [{ href: "/users", label: "Usuarios" }] : []),
+    ...(isAdmin
+      ? [
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/users", label: "Usuarios" },
+        ]
+      : []),
     { href: "/calendar", label: "Calendario" },
     { href: "/absences", label: "Ausencias" },
-    { href: "/install", label: "Instalar" },
     { href: "/profile", label: "Perfil" },
+    ...(isAdmin ? [{ href: "/settings", label: "Configuración" }] : []),
   ];
 
   return (
@@ -95,6 +100,7 @@ export function Navbar() {
           </div>
 
           <div className="hidden sm:flex items-center gap-3">
+            <NotificationCenter />
             <PWAInstallNavButton />
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100/80">
               <div className="w-6 h-6 rounded-full gradient-btn flex items-center justify-center">
@@ -135,7 +141,12 @@ export function Navbar() {
             >
               <div className="pb-4 space-y-1">
                 <div className="flex items-center px-3 py-2 mb-2">
-                  <Image src="/logo.svg" alt="Logo" width={100} height={30} />
+                  <Image
+                    src="/logo.svg"
+                    alt="Logo"
+                    width={100}
+                    height={30}
+                  />
                 </div>
                 {links.map((link, i) => (
                   <motion.div
@@ -159,6 +170,10 @@ export function Navbar() {
                   </motion.div>
                 ))}
                 <div className="border-t border-gray-100 pt-3 mt-3">
+                  <div className="flex items-center gap-2 px-3 py-2">
+                    <NotificationCenter />
+                    <span className="text-sm text-gray-500">Notificaciones</span>
+                  </div>
                   <PWAInstallNavButton />
                   <div className="flex items-center gap-2 px-3 py-2">
                     <div className="w-7 h-7 rounded-full gradient-btn flex items-center justify-center">

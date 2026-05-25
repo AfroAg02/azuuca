@@ -3,6 +3,65 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
+// PATCH: approve/reject a leave request (admin only)
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const isAdmin = session.user.role === "ADMIN";
+  if (!isAdmin) {
+    return NextResponse.json(
+      {
+        error: "Solo los administradores pueden aprobar o rechazar solicitudes",
+      },
+      { status: 403 },
+    );
+  }
+
+  const existing = await prisma.leaveRequest.findUnique({
+    where: { id: params.id },
+  });
+
+  if (!existing) {
+    return NextResponse.json(
+      { error: "Solicitud no encontrada" },
+      { status: 404 },
+    );
+  }
+
+  const body = await req.json();
+  const { status, startDate, endDate } = body;
+
+  const data: Record<string, string> = {};
+
+  if (status) {
+    const validStatuses = ["APPROVED", "REJECTED"];
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json({ error: "Estado no válido" }, { status: 400 });
+    }
+    data.status = status;
+  }
+
+  if (startDate) data.startDate = startDate;
+  if (endDate) data.endDate = endDate;
+
+  const updated = await prisma.leaveRequest.update({
+    where: { id: params.id },
+    data,
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      creator: { select: { name: true } },
+    },
+  });
+
+  return NextResponse.json(updated);
+}
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } },
@@ -36,72 +95,4 @@ export async function DELETE(
   await prisma.leaveRequest.delete({ where: { id: params.id } });
 
   return NextResponse.json({ success: true });
-}
-
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } },
-) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-  }
-
-  const existing = await prisma.leaveRequest.findUnique({
-    where: { id: params.id },
-  });
-
-  if (!existing) {
-    return NextResponse.json(
-      { error: "Ausencia no encontrada" },
-      { status: 404 },
-    );
-  }
-
-  const body = await req.json();
-  const { startDate, endDate } = body;
-
-  if (!startDate || !endDate) {
-    return NextResponse.json(
-      { error: "startDate y endDate son requeridos" },
-      { status: 400 },
-    );
-  }
-
-  if (startDate > endDate) {
-    return NextResponse.json(
-      { error: "La fecha de inicio no puede ser posterior a la fecha de fin" },
-      { status: 400 },
-    );
-  }
-
-  // Check overlap (exclude current record)
-  if (existing.userId) {
-    const overlapping = await prisma.leaveRequest.findFirst({
-      where: {
-        id: { not: params.id },
-        userId: existing.userId,
-        startDate: { lte: endDate },
-        endDate: { gte: startDate },
-      },
-    });
-
-    if (overlapping) {
-      return NextResponse.json(
-        { error: "Ya existe una ausencia que se superpone con estas fechas" },
-        { status: 409 },
-      );
-    }
-  }
-
-  const updated = await prisma.leaveRequest.update({
-    where: { id: params.id },
-    data: { startDate, endDate },
-    include: {
-      user: { select: { id: true, name: true, email: true } },
-      creator: { select: { name: true } },
-    },
-  });
-
-  return NextResponse.json(updated);
 }

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { calcPunctuality, getScheduleConfig } from "@/lib/schedule";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -21,15 +22,24 @@ export async function GET(req: NextRequest) {
   }
 
   // Get all attendance records in the date range
-  const records = await prisma.attendance.findMany({
-    where: {
-      date: { gte: from, lte: to },
-    },
-    include: {
-      user: { select: { id: true, name: true, hourlyRate: true } },
-    },
-    orderBy: [{ user: { name: "asc" } }, { date: "asc" }],
-  });
+  const [records, scheduleConfig, globalConfig] = await Promise.all([
+    prisma.attendance.findMany({
+      where: {
+        date: { gte: from, lte: to },
+      },
+      include: {
+        user: { select: { id: true, name: true, hourlyRate: true } },
+      },
+      orderBy: [{ user: { name: "asc" } }, { date: "asc" }],
+    }),
+    getScheduleConfig(),
+    prisma.globalConfig.findUnique({
+      where: { id: "global" },
+      select: { maxMonthlyEarnings: true },
+    }),
+  ]);
+
+  const maxCap = globalConfig?.maxMonthlyEarnings ?? null;
 
   // Get all unique dates in range that have records
   const allDates = [...new Set(records.map((r) => r.date))].sort();
@@ -41,7 +51,7 @@ export async function GET(req: NextRequest) {
       id: string;
       name: string;
       hourlyRate: number;
-      days: Record<string, { hoursWorked: number; earnings: number }>;
+      days: Record<string, { hoursWorked: number; earnings: number; lateArrivalMin: number | null; earlyDepartureMin: number | null }>;
       totalHours: number;
       totalEarnings: number;
     }
@@ -61,6 +71,9 @@ export async function GET(req: NextRequest) {
 
     const entry = userMap.get(r.userId)!;
 
+    const lateArrivalMin = r.clockIn ? calcPunctuality(r.clockIn, scheduleConfig.clockInTime) : null;
+    let earlyDepartureMin: number | null = null;
+
     if (r.clockIn && r.clockOut) {
       const [inH, inM, inS] = r.clockIn.split(":").map(Number);
       const [outH, outM, outS] = r.clockOut.split(":").map(Number);
@@ -69,19 +82,31 @@ export async function GET(req: NextRequest) {
       const hoursWorked =
         Math.round(Math.max(0, (outSeconds - inSeconds) / 3600) * 100) / 100;
       const earnings = Math.round(hoursWorked * r.user.hourlyRate * 100) / 100;
+      earlyDepartureMin = calcPunctuality(r.clockOut, scheduleConfig.clockOutTime);
 
-      entry.days[r.date] = { hoursWorked, earnings };
+      entry.days[r.date] = { hoursWorked, earnings, lateArrivalMin, earlyDepartureMin };
       entry.totalHours =
         Math.round((entry.totalHours + hoursWorked) * 100) / 100;
       entry.totalEarnings =
         Math.round((entry.totalEarnings + earnings) * 100) / 100;
     } else {
-      entry.days[r.date] = { hoursWorked: 0, earnings: 0 };
+      entry.days[r.date] = { hoursWorked: 0, earnings: 0, lateArrivalMin, earlyDepartureMin };
     }
   }
 
+  // Cap earnings per user
+  const users = Array.from(userMap.values()).map((u) => ({
+    ...u,
+    totalEarnings: maxCap !== null ? Math.min(u.totalEarnings, maxCap) : u.totalEarnings,
+  }));
+
   return NextResponse.json({
     dates: allDates,
-    users: Array.from(userMap.values()),
+    users,
+    maxMonthlyEarnings: maxCap,
+    schedule: {
+      clockInTime: scheduleConfig.clockInTime,
+      clockOutTime: scheduleConfig.clockOutTime,
+    },
   });
 }

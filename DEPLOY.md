@@ -197,9 +197,77 @@ Configurar comandos:
 
 ---
 
+## Notificaciones en Tiempo Real (SSE)
+
+El sistema incluye notificaciones push en tiempo real usando **Server-Sent Events (SSE)** — una tecnología nativa del navegador, 100% gratuita, sin servicios externos.
+
+### Funcionamiento
+
+- Funciona automáticamente al desplegar. **No requiere configuración extra ni variables de entorno**.
+- Las notificaciones se envían desde el servidor a todos los clientes conectados.
+- `EventSource` (API nativa del navegador) se reconecta automáticamente si pierde conexión.
+- Compatible con **Render**, **Railway**, y cualquier hosting con servidor Node.js persistente.
+
+> **Nota Vercel**: En el plan gratuito (serverless), las conexiones SSE se cierran a los ~25s, pero `EventSource` se reconecta automáticamente, actuando como polling. Para mejores resultados, usar Render o Railway.
+
+### Enviar Notificaciones (API)
+
+Solo administradores pueden enviar notificaciones:
+
+```bash
+# Broadcast a todos los usuarios conectados
+curl -X POST https://tu-app.com/api/notifications/send \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=TU_TOKEN" \
+  -d '{"title": "Aviso", "message": "Reunión a las 3pm", "type": "info"}'
+
+# Enviar a usuarios específicos
+curl -X POST https://tu-app.com/api/notifications/send \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=TU_TOKEN" \
+  -d '{"title": "Alerta", "message": "Tu turno cambió", "type": "warning", "targetUserIds": ["user-id-1"]}'
+```
+
+### Uso en código (reutilizable)
+
+```tsx
+// En cualquier componente client-side:
+import { useNotifications } from "@/components/notifications/SignalRProvider";
+
+function MiComponente() {
+  const { notifications, unreadCount, markAsRead, connected } =
+    useNotifications();
+  return (
+    <span>
+      {connected ? "🟢" : "🔴"} {unreadCount} sin leer
+    </span>
+  );
+}
+```
+
+```tsx
+// Desde el servidor (API routes o Server Actions):
+import { broadcastNotification } from "@/lib/notifications";
+
+broadcastNotification({
+  id: crypto.randomUUID(),
+  title: "Hola",
+  message: "Mensaje de prueba",
+  type: "info",
+  timestamp: new Date().toISOString(),
+  read: false,
+});
+
+// A usuarios específicos:
+broadcastNotification(notification, ["user-id-1", "user-id-2"]);
+```
+
+---
+
 ## Notas Importantes
 
 - **Cambiar contraseña**: Después del primer login, cambia la contraseña del administrador en la sección "Perfil"
 - **NEXTAUTH_SECRET**: Nunca uses el valor por defecto en producción. Genera uno seguro con `openssl rand -base64 32`
 - **Base de datos**: En producción, usa PostgreSQL (cambia el provider en `schema.prisma`)
 - **Backup**: Configura backups regulares de tu base de datos en producción
+- **Notificaciones**: Funcionan automáticamente con SSE. No requieren servicios externos ni configuración adicional

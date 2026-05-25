@@ -18,6 +18,7 @@ model User {
   updatedAt  DateTime @updatedAt
 
   attendances   Attendance[]
+  absences      Absence[]
   leaveRequests  LeaveRequest[] @relation("UserLeaveRequests")
   createdLeaves  LeaveRequest[] @relation("CreatorLeaveRequests")
 }
@@ -34,6 +35,18 @@ model Attendance {
   @@unique([userId, date])
 }
 
+model Absence {
+  id     String @id @default(cuid())
+  userId String
+  date   String // YYYY-MM-DD
+  reason String
+  type   String // ILLNESS, EVENT, PLANNED, OTHER
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
+
 model LeaveRequest {
   id         String   @id @default(cuid())
   userId     String?  // null for HOLIDAY (applies to everyone)
@@ -42,10 +55,28 @@ model LeaveRequest {
   endDate    String   // YYYY-MM-DD
   type       String   // VACATION, MEDICAL, PAID_LEAVE, UNJUSTIFIED, HOLIDAY
   reason     String
+  status     String   @default("APPROVED") // PENDING, APPROVED, REJECTED
   hours      Float?   // only for HOLIDAY — paid hours for that day
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   user    User? @relation("UserLeaveRequests", fields: [userId], references: [id], onDelete: Cascade)
   creator User  @relation("CreatorLeaveRequests", fields: [createdBy], references: [id])
+}
+
+model GlobalConfig {
+  id        String   @id @default("global")
+  clockInTime  String  @default("09:00") // HH:mm — expected entry time
+  clockOutTime String  @default("18:00") // HH:mm — expected exit time
+  maxMonthlyEarnings Float? // nullable — null means no cap
+  updatedAt DateTime @updatedAt
+}
+
+model QrConfig {
+  id        String   @id @default("default")
+  secret    String   // TOTP secret (base32)
+  siteId    String   @unique @default(cuid()) // unique site identifier
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

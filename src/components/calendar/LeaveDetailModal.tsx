@@ -8,8 +8,9 @@ import {
   Calendar,
   FileText,
   Clock,
-  Save,
-  Pencil,
+  CheckCircle2,
+  XCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { LEAVE_TYPES } from "./LeaveRequestModal";
@@ -20,6 +21,7 @@ interface LeaveRequestData {
   endDate: string;
   type: string;
   reason: string;
+  status: string;
   hours: number | null;
   createdAt: string;
   user: { id: string; name: string; email: string } | null;
@@ -33,7 +35,7 @@ interface LeaveDetailModalProps {
   isAdmin: boolean;
   currentUserId: string;
   onDelete: (id: string) => Promise<void>;
-  onUpdate?: (id: string, startDate: string, endDate: string) => Promise<void>;
+  onStatusChange?: (id: string, status: string) => Promise<void>;
 }
 
 function formatDateES(dateStr: string): string {
@@ -62,14 +64,10 @@ export function LeaveDetailModal({
   isAdmin,
   currentUserId,
   onDelete,
-  onUpdate,
+  onStatusChange,
 }: LeaveDetailModalProps) {
   const [deleting, setDeleting] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [editStart, setEditStart] = useState("");
-  const [editEnd, setEditEnd] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [editError, setEditError] = useState("");
+  const [changingStatus, setChangingStatus] = useState(false);
 
   if (!leaveRequest) return null;
 
@@ -77,38 +75,6 @@ export function LeaveDetailModal({
   const dayCount = getDayCount(leaveRequest.startDate, leaveRequest.endDate);
   const isHoliday = leaveRequest.type === "HOLIDAY";
   const canDelete = isAdmin || leaveRequest.user?.id === currentUserId;
-
-  function startEditing() {
-    setEditStart(leaveRequest!.startDate);
-    setEditEnd(leaveRequest!.endDate);
-    setEditError("");
-    setEditing(true);
-  }
-
-  function cancelEditing() {
-    setEditing(false);
-    setEditError("");
-  }
-
-  async function handleSaveEdit() {
-    if (editStart > editEnd) {
-      setEditError(
-        "La fecha de inicio no puede ser posterior a la fecha de fin",
-      );
-      return;
-    }
-    setSaving(true);
-    setEditError("");
-    try {
-      await onUpdate?.(leaveRequest!.id, editStart, editEnd);
-      setEditing(false);
-      onClose();
-    } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Error al actualizar");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -193,48 +159,15 @@ export function LeaveDetailModal({
                 >
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                     <Calendar size={11} /> Duración
-                    {isAdmin && !editing && (
-                      <button
-                        onClick={startEditing}
-                        className="ml-auto text-indigo-500 hover:text-indigo-700 transition-colors"
-                        title="Editar fechas"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                    )}
                   </p>
-                  {editing ? (
-                    <div className="space-y-2 mt-1">
-                      <input
-                        type="date"
-                        value={editStart}
-                        onChange={(e) => {
-                          setEditStart(e.target.value);
-                          if (e.target.value > editEnd)
-                            setEditEnd(e.target.value);
-                        }}
-                        className="w-full px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 outline-none"
-                      />
-                      <input
-                        type="date"
-                        value={editEnd}
-                        min={editStart}
-                        onChange={(e) => setEditEnd(e.target.value)}
-                        className="w-full px-2 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 outline-none"
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-sm font-medium text-gray-900">
-                        {dayCount} día{dayCount > 1 ? "s" : ""}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {formatDateES(leaveRequest.startDate)}
-                        {leaveRequest.startDate !== leaveRequest.endDate &&
-                          ` — ${formatDateES(leaveRequest.endDate)}`}
-                      </p>
-                    </>
-                  )}
+                  <p className="text-sm font-medium text-gray-900">
+                    {dayCount} día{dayCount > 1 ? "s" : ""}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {formatDateES(leaveRequest.startDate)}
+                    {leaveRequest.startDate !== leaveRequest.endDate &&
+                      ` — ${formatDateES(leaveRequest.endDate)}`}
+                  </p>
                 </div>
                 <div className="bg-gray-50/80 rounded-xl p-3">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
@@ -266,42 +199,101 @@ export function LeaveDetailModal({
                 </div>
               )}
 
-              {/* Actions */}
-              {(canDelete || editing) && (
-                <div className="border-t border-gray-100 pt-4 space-y-2">
-                  {editError && (
-                    <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-                      {editError}
-                    </p>
+              {/* Status badge */}
+              {!isHoliday && (
+                <div
+                  className={`rounded-xl p-3 flex items-center gap-2 ${
+                    leaveRequest.status === "PENDING"
+                      ? "bg-yellow-50/80 border border-yellow-200"
+                      : leaveRequest.status === "REJECTED"
+                        ? "bg-red-50/80 border border-red-200"
+                        : "bg-emerald-50/80 border border-emerald-200"
+                  }`}
+                >
+                  {leaveRequest.status === "PENDING" && (
+                    <>
+                      <Clock size={16} className="text-yellow-600" />
+                      <div>
+                        <p className="text-sm font-medium text-yellow-700">
+                          Pendiente de aprobación
+                        </p>
+                        <p className="text-xs text-yellow-600">
+                          Un administrador debe aprobar esta solicitud
+                        </p>
+                      </div>
+                    </>
                   )}
-                  {editing ? (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleSaveEdit}
-                        disabled={saving}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-500 hover:bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50"
-                      >
-                        <Save size={16} />
-                        {saving ? "Guardando..." : "Guardar"}
-                      </button>
-                      <button
-                        onClick={cancelEditing}
-                        disabled={saving}
-                        className="px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  ) : canDelete ? (
+                  {leaveRequest.status === "APPROVED" && (
+                    <>
+                      <CheckCircle2 size={16} className="text-emerald-600" />
+                      <p className="text-sm font-medium text-emerald-700">
+                        Aprobada
+                      </p>
+                    </>
+                  )}
+                  {leaveRequest.status === "REJECTED" && (
+                    <>
+                      <XCircle size={16} className="text-red-600" />
+                      <p className="text-sm font-medium text-red-700">
+                        Rechazada
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Admin approve/reject for PENDING */}
+              {isAdmin &&
+                !isHoliday &&
+                leaveRequest.status === "PENDING" &&
+                onStatusChange && (
+                  <div className="border-t border-gray-100 pt-4 flex gap-3">
                     <button
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl shadow-lg shadow-red-500/20 transition-all disabled:opacity-50"
+                      onClick={async () => {
+                        setChangingStatus(true);
+                        try {
+                          await onStatusChange(leaveRequest!.id, "APPROVED");
+                          onClose();
+                        } finally {
+                          setChangingStatus(false);
+                        }
+                      }}
+                      disabled={changingStatus}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50"
                     >
-                      <Trash2 size={16} />
-                      {deleting ? "Eliminando..." : "Eliminar Ausencia"}
+                      <ShieldCheck size={16} />
+                      {changingStatus ? "Procesando..." : "Aprobar"}
                     </button>
-                  ) : null}
+                    <button
+                      onClick={async () => {
+                        setChangingStatus(true);
+                        try {
+                          await onStatusChange(leaveRequest!.id, "REJECTED");
+                          onClose();
+                        } finally {
+                          setChangingStatus(false);
+                        }
+                      }}
+                      disabled={changingStatus}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl shadow-lg shadow-red-500/20 transition-all disabled:opacity-50"
+                    >
+                      <XCircle size={16} />
+                      {changingStatus ? "Procesando..." : "Rechazar"}
+                    </button>
+                  </div>
+                )}
+
+              {/* Delete */}
+              {canDelete && (
+                <div className="border-t border-gray-100 pt-4">
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl shadow-lg shadow-red-500/20 transition-all disabled:opacity-50"
+                  >
+                    <Trash2 size={16} />
+                    {deleting ? "Eliminando..." : "Eliminar Ausencia"}
+                  </button>
                 </div>
               )}
             </div>

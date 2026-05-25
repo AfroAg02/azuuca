@@ -14,38 +14,30 @@ export async function GET(request: Request) {
   const timezone = getTimezoneFromRequest(request);
   const today = searchParams.get("date") || getTodayInTimezone(timezone);
 
-  const [totalUsers, todayRecords, todayAbsences, plannedLeaves, holidays] =
-    await Promise.all([
-      prisma.user.count(),
-      prisma.attendance.findMany({
-        where: { date: today },
-        include: { user: { select: { name: true, hourlyRate: true } } },
-        orderBy: { user: { name: "asc" } },
-      }),
-      prisma.leaveRequest.count({
-        where: {
-          startDate: { lte: today },
-          endDate: { gte: today },
-          type: { not: "HOLIDAY" },
-          userId: { not: null },
-        },
-      }),
-      prisma.leaveRequest.findMany({
-        where: {
-          startDate: { lte: today },
-          endDate: { gte: today },
-          type: { not: "HOLIDAY" },
-        },
-        include: { user: { select: { name: true } } },
-      }),
-      prisma.leaveRequest.findMany({
-        where: {
-          startDate: { lte: today },
-          endDate: { gte: today },
-          type: "HOLIDAY",
-        },
-      }),
-    ]);
+  const [totalUsers, todayRecords, todayAbsences, plannedLeaves, holidays] = await Promise.all([
+    prisma.user.count(),
+    prisma.attendance.findMany({
+      where: { date: today },
+      include: { user: { select: { name: true, hourlyRate: true } } },
+      orderBy: { user: { name: "asc" } },
+    }),
+    prisma.absence.count({ where: { date: today } }),
+    prisma.leaveRequest.findMany({
+      where: {
+        startDate: { lte: today },
+        endDate: { gte: today },
+        type: { not: "HOLIDAY" },
+      },
+      include: { user: { select: { name: true } } },
+    }),
+    prisma.leaveRequest.findMany({
+      where: {
+        startDate: { lte: today },
+        endDate: { gte: today },
+        type: "HOLIDAY",
+      },
+    }),
+  ]);
 
   const enrichedRecords = todayRecords.map((r) => {
     let hoursWorked: number | null = null;
@@ -79,9 +71,6 @@ export async function GET(request: Request) {
       startDate: l.startDate,
       endDate: l.endDate,
     })),
-    holiday:
-      holidays.length > 0
-        ? { name: holidays[0].reason, hours: holidays[0].hours }
-        : null,
+    holiday: holidays.length > 0 ? { name: holidays[0].reason, hours: holidays[0].hours } : null,
   });
 }

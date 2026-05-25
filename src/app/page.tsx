@@ -10,8 +10,10 @@ import {
   UserX,
   X,
   Save,
+  ScanLine,
 } from "lucide-react";
 import { AttendanceButton } from "@/components/AttendanceButton";
+import { QrScanner } from "@/components/QrScanner";
 import { sileo } from "sileo";
 
 interface AttendanceData {
@@ -30,6 +32,8 @@ export default function HomePage() {
   const [absenceType, setAbsenceType] = useState("ILLNESS");
   const [absenceReason, setAbsenceReason] = useState("");
   const [savingAbsence, setSavingAbsence] = useState(false);
+  const [showQrScanner, setShowQrScanner] = useState(false);
+  const [qrEnabled, setQrEnabled] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -38,6 +42,7 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchTodayAttendance();
+    fetchQrStatus();
   }, []);
 
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -57,6 +62,18 @@ export default function HomePage() {
       sileo.error({ title: "Error de conexión al cargar asistencia" });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchQrStatus() {
+    try {
+      const res = await fetch("/api/attendance/qr");
+      if (res.ok) {
+        const data = await res.json();
+        setQrEnabled(data.qrEnabled);
+      }
+    } catch {
+      // silently fail
     }
   }
 
@@ -206,6 +223,22 @@ export default function HomePage() {
         />
       </motion.div>
 
+      {/* QR Scanner Button */}
+      {qrEnabled && !(hasClockIn && hasClockOut) && (
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setShowQrScanner(true)}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 transition-colors"
+        >
+          <ScanLine size={18} />
+          Escanear QR
+        </motion.button>
+      )}
+
       {/* Absence Button */}
       {!hasClockIn && (
         <motion.button
@@ -343,6 +376,19 @@ export default function HomePage() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* QR Scanner Modal */}
+      <AnimatePresence>
+        {showQrScanner && (
+          <QrScanner
+            onSuccess={() => {
+              setShowQrScanner(false);
+              fetchTodayAttendance();
+            }}
+            onClose={() => setShowQrScanner(false)}
+          />
         )}
       </AnimatePresence>
     </div>
