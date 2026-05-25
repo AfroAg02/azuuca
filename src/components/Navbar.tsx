@@ -100,12 +100,9 @@ export function Navbar() {
             </div>
           </div>
 
-          {/* Right: bell + user + logout (desktop) / bell + hamburger (mobile) */}
+          {/* Right: user + bell + logout (desktop) / bell + hamburger (mobile) */}
           <div className="flex items-center gap-1 sm:gap-2">
-            {/* Bell — always visible */}
-            <NotificationCenter />
-
-            {/* Desktop-only: PWA install + user pill + logout */}
+            {/* Desktop-only: PWA install + user pill + bell + logout */}
             <div className="hidden lg:flex items-center gap-2">
               <PWAInstallNavButton />
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100/80">
@@ -118,6 +115,7 @@ export function Navbar() {
                   {session.user?.name}
                 </span>
               </div>
+              <NotificationCenter />
               <button
                 onClick={() => signOut({ callbackUrl: "/login" })}
                 className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
@@ -126,13 +124,16 @@ export function Navbar() {
               </button>
             </div>
 
-            {/* Hamburger — tablet & mobile */}
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2 rounded-xl text-gray-600 hover:bg-gray-100 transition-colors"
-            >
-              {menuOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
+            {/* Bell + Hamburger — tablet & mobile */}
+            <div className="lg:hidden flex items-center gap-1">
+              <NotificationCenter />
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="p-2 rounded-xl text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                {menuOpen ? <X size={22} /> : <Menu size={22} />}
+              </button>
+            </div>
           </div>
         </div>
 
